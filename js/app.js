@@ -97,6 +97,139 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     gameVendorOrion: "game-vendor-orion"
   };
 
+  const THEME_PRESETS = {
+    white: {
+      bg: "#f6f8fc",
+      bg2: "#ffffff",
+      panel: "#ffffff",
+      panel2: "#f1f5f9",
+      panel3: "#e2e8f0",
+      input: "#ffffff",
+      soft: "#f8fafc",
+      topbar: "rgba(255, 255, 255, .92)",
+      tableHead: "#f8fafc",
+      activeBg: "#eff6ff",
+      successBg: "#ecfdf5",
+      dangerBg: "#fff1f2",
+      warnBg: "#fff7ed",
+      line: "#d9e2ee",
+      lineSoft: "rgba(23, 32, 51, .08)",
+      text: "#172033",
+      muted: "#64748b",
+      muted2: "#94a3b8",
+      primary: "#2563eb",
+      primaryDark: "#1d4ed8",
+      purple: "#7c3aed",
+      green: "#059669",
+      red: "#e11d48",
+      amber: "#d97706",
+      gray: "#64748b",
+      gold: "#f59e0b",
+      brandA: "#111827",
+      brandB: "#2563eb",
+      brandInk: "#f8fafc",
+      brandAccent: "#38bdf8",
+      gameCard1: "#eff6ff",
+      gameCard2: "#f5f3ff",
+      gameCard3: "#ecfdf5",
+      gameCard4: "#fff7ed",
+      shadow: "0 18px 44px rgba(15, 23, 42, .08)"
+    },
+    dark: {
+      bg: "#0b1020",
+      bg2: "#101827",
+      panel: "#111827",
+      panel2: "#172033",
+      panel3: "#1f2a44",
+      input: "#0f172a",
+      soft: "#151f33",
+      topbar: "rgba(17, 24, 39, .92)",
+      tableHead: "#151f33",
+      activeBg: "rgba(56, 189, 248, .12)",
+      successBg: "rgba(16, 185, 129, .13)",
+      dangerBg: "rgba(244, 63, 94, .13)",
+      warnBg: "rgba(245, 158, 11, .14)",
+      line: "#26344f",
+      lineSoft: "rgba(226, 232, 240, .08)",
+      text: "#e5edf7",
+      muted: "#9aa8bd",
+      muted2: "#718096",
+      primary: "#38bdf8",
+      primaryDark: "#0ea5e9",
+      purple: "#a78bfa",
+      green: "#34d399",
+      red: "#fb7185",
+      amber: "#fbbf24",
+      gray: "#94a3b8",
+      gold: "#f59e0b",
+      brandA: "#0f172a",
+      brandB: "#155e75",
+      brandInk: "#e0f2fe",
+      brandAccent: "#fbbf24",
+      gameCard1: "#122033",
+      gameCard2: "#201a35",
+      gameCard3: "#112a24",
+      gameCard4: "#2a2111",
+      shadow: "0 18px 44px rgba(0, 0, 0, .35)"
+    }
+  };
+  const THEME_CUSTOM_DEFAULTS = {
+    ...THEME_PRESETS.white,
+    bg: "#eef2f7",
+    panel: "#ffffff",
+    panel2: "#e8eef6",
+    input: "#ffffff",
+    soft: "#f8fafc",
+    primary: "#0f766e",
+    primaryDark: "#0d9488",
+    purple: "#6d28d9",
+    gold: "#d97706",
+    brandA: "#0f172a",
+    brandB: "#0f766e",
+    brandAccent: "#f59e0b",
+    gameCard1: "#ecfeff",
+    gameCard2: "#f5f3ff",
+    gameCard3: "#ecfdf5",
+    gameCard4: "#fff7ed"
+  };
+  const THEME_VAR_MAP = {
+    bg: "--bg",
+    bg2: "--bg-2",
+    panel: "--panel",
+    panel2: "--panel-2",
+    panel3: "--panel-3",
+    input: "--input",
+    soft: "--soft",
+    topbar: "--topbar",
+    tableHead: "--table-head",
+    activeBg: "--active-bg",
+    successBg: "--success-bg",
+    dangerBg: "--danger-bg",
+    warnBg: "--warn-bg",
+    line: "--line",
+    lineSoft: "--line-soft",
+    text: "--text",
+    muted: "--muted",
+    muted2: "--muted-2",
+    primary: "--cyan",
+    primaryDark: "--cyan-2",
+    purple: "--purple",
+    green: "--green",
+    red: "--red",
+    amber: "--amber",
+    gray: "--gray",
+    gold: "--gold",
+    brandA: "--brand-a",
+    brandB: "--brand-b",
+    brandInk: "--brand-ink",
+    brandAccent: "--brand-accent",
+    gameCard1: "--game-card-1",
+    gameCard2: "--game-card-2",
+    gameCard3: "--game-card-3",
+    gameCard4: "--game-card-4",
+    shadow: "--shadow"
+  };
+
   let DB = null;
   let S = null;
   let IS_ONLINE = navigator.onLine;
@@ -303,6 +436,158 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     area.remove();
   }
 
+  function defaultTheme() {
+    return { mode: "white", custom: clone(THEME_CUSTOM_DEFAULTS) };
+  }
+
+  function normalizeTheme(theme) {
+    const input = theme && typeof theme === "object" ? theme : {};
+    const mode = ["white", "dark", "custom"].includes(input.mode) ? input.mode : input.mode === "light" ? "white" : "white";
+    return { mode, custom: { ...THEME_CUSTOM_DEFAULTS, ...(input.custom || {}) } };
+  }
+
+  function hexToRgbParts(value, fallback) {
+    let hex = String(value || "").trim();
+    if (!/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex)) return fallback || "37, 99, 235";
+    hex = hex.slice(1);
+    if (hex.length === 3) hex = hex.split("").map((ch) => ch + ch).join("");
+    const int = parseInt(hex, 16);
+    return `${(int >> 16) & 255}, ${(int >> 8) & 255}, ${int & 255}`;
+  }
+
+  function hexToRgba(value, alpha, fallback) {
+    if (!/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(value || "").trim())) return fallback;
+    return `rgba(${hexToRgbParts(value)}, ${alpha})`;
+  }
+
+  function isDarkColor(value) {
+    const parts = hexToRgbParts(value, "255, 255, 255").split(",").map((part) => Number(part.trim()));
+    const luminance = (0.2126 * parts[0] + 0.7152 * parts[1] + 0.0722 * parts[2]) / 255;
+    return luminance < 0.45;
+  }
+
+  function currentThemeValues() {
+    const theme = normalizeTheme(DB?.theme);
+    if (theme.mode === "dark") return { ...THEME_PRESETS.dark };
+    if (theme.mode === "custom") return { ...THEME_CUSTOM_DEFAULTS, ...theme.custom };
+    return { ...THEME_PRESETS.white };
+  }
+
+  function applyTheme() {
+    if (!DB) return;
+    DB.theme = normalizeTheme(DB.theme);
+    const values = currentThemeValues();
+    const root = document.documentElement;
+    root.dataset.theme = DB.theme.mode;
+    root.style.colorScheme = DB.theme.mode === "dark" || (DB.theme.mode === "custom" && isDarkColor(values.bg)) ? "dark" : "light";
+    Object.entries(THEME_VAR_MAP).forEach(([key, cssVar]) => {
+      if (values[key]) root.style.setProperty(cssVar, values[key]);
+    });
+    root.style.setProperty("--primary-rgb", hexToRgbParts(values.primary));
+    root.style.setProperty("--text-rgb", hexToRgbParts(values.text, "23, 32, 51"));
+    root.style.setProperty("--green-rgb", hexToRgbParts(values.green, "5, 150, 105"));
+    root.style.setProperty("--red-rgb", hexToRgbParts(values.red, "225, 29, 72"));
+    root.style.setProperty("--amber-rgb", hexToRgbParts(values.amber, "217, 119, 6"));
+  }
+
+  function themeOptions() {
+    return [["white", "White"], ["dark", "Dark"], ["custom", "Custom"]];
+  }
+
+  function themeQuickSelect() {
+    const mode = normalizeTheme(DB?.theme).mode;
+    return selectInput("theme-quick", themeOptions(), mode, "TM.setThemeMode(this.value)", `class="theme-quick" title="Theme Style"`);
+  }
+
+  function themeColorField(label, id, value) {
+    return field(label, `<input id="${id}" type="color" value="${esc(value)}" oninput="TM.previewCustomTheme()">`);
+  }
+
+  function readCustomThemeInputs() {
+    const existing = normalizeTheme(DB.theme).custom;
+    const get = (id, fallback) => document.getElementById(id)?.value || fallback;
+    const custom = {
+      ...existing,
+      bg: get("theme-bg", existing.bg),
+      panel: get("theme-panel", existing.panel),
+      panel2: get("theme-panel-2", existing.panel2),
+      input: get("theme-input", existing.input),
+      text: get("theme-text", existing.text),
+      muted: get("theme-muted", existing.muted),
+      primary: get("theme-primary", existing.primary),
+      purple: get("theme-purple", existing.purple),
+      green: get("theme-green", existing.green),
+      red: get("theme-red", existing.red),
+      gold: get("theme-gold", existing.gold),
+      line: get("theme-line", existing.line),
+      brandA: get("theme-brand-a", existing.brandA),
+      brandB: get("theme-brand-b", existing.brandB)
+    };
+    custom.bg2 = custom.panel;
+    custom.panel3 = get("theme-panel-3", custom.panel2);
+    custom.soft = custom.panel2;
+    custom.tableHead = custom.panel2;
+    custom.primaryDark = custom.primary;
+    custom.amber = custom.gold;
+    custom.gray = custom.muted;
+    custom.muted2 = custom.muted;
+    custom.lineSoft = hexToRgba(custom.text, ".08", existing.lineSoft);
+    custom.topbar = hexToRgba(custom.panel, ".92", existing.topbar);
+    custom.activeBg = hexToRgba(custom.primary, ".10", existing.activeBg);
+    custom.successBg = hexToRgba(custom.green, ".12", existing.successBg);
+    custom.dangerBg = hexToRgba(custom.red, ".12", existing.dangerBg);
+    custom.warnBg = hexToRgba(custom.gold, ".13", existing.warnBg);
+    custom.brandInk = isDarkColor(custom.brandA) ? "#f8fafc" : "#111827";
+    custom.brandAccent = custom.gold;
+    custom.gameCard1 = hexToRgba(custom.primary, ".10", existing.gameCard1);
+    custom.gameCard2 = hexToRgba(custom.purple, ".10", existing.gameCard2);
+    custom.gameCard3 = hexToRgba(custom.green, ".10", existing.gameCard3);
+    custom.gameCard4 = hexToRgba(custom.gold, ".12", existing.gameCard4);
+    custom.shadow = isDarkColor(custom.bg) ? "0 18px 44px rgba(0, 0, 0, .35)" : "0 18px 44px rgba(15, 23, 42, .08)";
+    return custom;
+  }
+
+  function setThemeMode(mode) {
+    DB.theme = normalizeTheme(DB.theme);
+    DB.theme.mode = ["white", "dark", "custom"].includes(mode) ? mode : "white";
+    saveDB();
+    applyTheme();
+    pushConfig();
+    render();
+  }
+
+  function previewCustomTheme() {
+    DB.theme = normalizeTheme(DB.theme);
+    DB.theme.mode = "custom";
+    DB.theme.custom = readCustomThemeInputs();
+    applyTheme();
+    const select = document.getElementById("theme-mode");
+    if (select) select.value = "custom";
+  }
+
+  function saveTheme() {
+    DB.theme = normalizeTheme(DB.theme);
+    const mode = document.getElementById("theme-mode")?.value || DB.theme.mode;
+    DB.theme.mode = ["white", "dark", "custom"].includes(mode) ? mode : "white";
+    if (DB.theme.mode === "custom") DB.theme.custom = readCustomThemeInputs();
+    saveDB();
+    applyTheme();
+    pushConfig();
+    const msg = document.getElementById("theme-save-msg");
+    if (msg) {
+      msg.textContent = "Theme saved.";
+      setTimeout(() => { const node = document.getElementById("theme-save-msg"); if (node) node.textContent = ""; }, 2000);
+    }
+  }
+
+  function resetCustomTheme() {
+    DB.theme = { mode: "custom", custom: clone(THEME_CUSTOM_DEFAULTS) };
+    saveDB();
+    applyTheme();
+    pushConfig();
+    render();
+  }
+
   function createDefaultDB() {
     const payMethods = [
       { id: IDS.cashApp, name: "Cash App", tags: [{ id: "tag-cash-main", tag: "$TeamMarkhor" }, { id: "tag-cash-backup", tag: "$MarkhorPay" }] },
@@ -362,6 +647,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         lateGraceMinutes: 15
       },
       salesTargets: { monthlySales: 0, monthlyNewPlayers: 0 },
+      theme: defaultTheme(),
       shiftStart: new Date().toISOString(),
       shiftOpen: true,
       activeShiftName: shiftNameForNow([
@@ -447,6 +733,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     };
     db.salesTargets = { monthlySales: 0, monthlyNewPlayers: 0, ...(db.salesTargets || {}) };
     if (db.salesTargets.monthlySales === 0 && db.salesTargets.monthlyDeposit) db.salesTargets.monthlySales = num(db.salesTargets.monthlyDeposit);
+    db.theme = normalizeTheme(db.theme);
     if (!db.shiftStart) db.shiftStart = new Date().toISOString();
     if (typeof db.shiftOpen !== "boolean") db.shiftOpen = true;
     if (!db.activeShiftName) db.activeShiftName = shiftNameForNow(db.shifts);
@@ -1070,6 +1357,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function render() {
     if (!DB || !S) return;
+    applyTheme();
     const scrollTop = document.querySelector(".content-scroll")?.scrollTop || 0;
     const adminScrollTop = document.querySelector(".admin-main")?.scrollTop || 0;
     app.innerHTML = `
@@ -1100,6 +1388,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
           <button class="btn btn-ghost ${S.page === "admin" ? "active" : ""}" onclick="TM.openAdminGate()">Admin Dashboard</button>
         </nav>
         <div class="top-right">
+          ${themeQuickSelect()}
           ${S.page === "admin" && S.adminAuthed ? `<span class="shift-clock">Admin: <b>${esc(currentAdminUser()?.name || "Authorized")}</b></span><button class="btn btn-ghost btn-sm" onclick="TM.lockAdmin()">Lock Admin Dashboard</button>` : ""}
           <span class="shift-clock">${esc(k)} <b id="clk"></b></span>
           ${S.page === "shift" && isShiftOpen() ? `<button class="btn btn-warn" onclick="TM.openCloseShift()" ${IS_ONLINE ? "" : "disabled"}>Close Shift</button>` : ""}
@@ -2285,7 +2574,32 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function renderAdminSettings() {
+    const theme = normalizeTheme(DB.theme);
+    const custom = theme.custom;
     return `<section class="grid c2">
+      <div class="fc full"><div class="fc-head">Theme And Appearance</div><div class="fg stack">
+        <p class="muted">Choose a CRM style from anywhere using the top bar, or build a custom palette here.</p>
+        <div class="grid c3">
+          ${field("Theme Style", selectInput("theme-mode", themeOptions(), theme.mode, "TM.setThemeMode(this.value)"))}
+          ${field("Primary Action Color", `<input type="color" value="${esc(custom.primary)}" id="theme-primary" oninput="TM.previewCustomTheme()">`)}
+          ${field("Brand Accent Color", `<input type="color" value="${esc(custom.gold)}" id="theme-gold" oninput="TM.previewCustomTheme()">`)}
+        </div>
+        <div class="theme-custom-grid">
+          ${themeColorField("Page Background", "theme-bg", custom.bg)}
+          ${themeColorField("Card Background", "theme-panel", custom.panel)}
+          ${themeColorField("Soft Background", "theme-panel-2", custom.panel2)}
+          ${themeColorField("Input Background", "theme-input", custom.input)}
+          ${themeColorField("Main Text", "theme-text", custom.text)}
+          ${themeColorField("Muted Text", "theme-muted", custom.muted)}
+          ${themeColorField("Secondary Accent", "theme-purple", custom.purple)}
+          ${themeColorField("Success Color", "theme-green", custom.green)}
+          ${themeColorField("Danger Color", "theme-red", custom.red)}
+          ${themeColorField("Border Color", "theme-line", custom.line)}
+          ${themeColorField("Logo Base Color", "theme-brand-a", custom.brandA)}
+          ${themeColorField("Logo End Color", "theme-brand-b", custom.brandB)}
+        </div>
+        <div class="row end"><button class="btn btn-ghost" onclick="TM.resetCustomTheme()">Reset Custom Theme</button><button class="btn btn-primary" onclick="TM.saveTheme()">Save Theme</button><span id="theme-save-msg" class="success-text"></span></div>
+      </div></div>
       <div class="fc"><div class="fc-head">Authorization Code</div><div class="fg stack">
         <p class="muted">This code is required when a recharge promo exceeds 100%. Only share with managers and admins.</p>
         ${field("Authorization Code", `<input id="override-code" type="password" autocomplete="new-password" value="${esc(DB.overrideCode)}">`)}
@@ -4214,6 +4528,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   async function bootApp() {
     DB = loadDB();
+    applyTheme();
     S = createState();
     S.pf.agent = salesPeople()[0]?.name || "";
     S.ff.agent = salesPeople()[0]?.name || "";
@@ -4223,6 +4538,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     S.rf.gameName = DB.games[0]?.name || "";
     bootStatus.textContent = "Connecting to Supabase...";
     await sbPull(true);
+    applyTheme();
     S.pf.agent = salesPeople()[0]?.name || S.pf.agent;
     S.ff.agent = salesPeople()[0]?.name || S.ff.agent;
     S.rf.agent = salesPeople()[0]?.name || S.rf.agent;
@@ -4269,7 +4585,9 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     clearPlayerLookup, clearPerformance, clearAttendanceFilters, exportEntries, exportExpenses,
     exportPerformance, exportAttendance, exportMonthlyAttendance, exportMonthlyProgress,
     exportJson, loadRestoreFile, restoreBackup, testSupabase, saveSupabase, pushAll,
-    pullAll, autoSyncNow, copySql, saveOverrideCode, saveSalesTargets, saveTargets, copy, renderNow
+    pullAll, autoSyncNow, copySql, saveOverrideCode, saveSalesTargets, saveTargets,
+    setThemeMode, previewCustomTheme, saveTheme, resetCustomTheme,
+    copy, renderNow
   };
 
   document.addEventListener("DOMContentLoaded", bootApp);
