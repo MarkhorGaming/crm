@@ -17,15 +17,16 @@
   ];
   const PERMISSIONS = [
     "View Entries", "Add Paid Recharge", "Add Freeplay", "Add Redeem", "Edit Entries",
-    "Delete Entries", "View Dashboard", "View Games", "View Vendors", "View Expenses",
-    "Add Expenses", "Export / Backup", "Manage Agents", "Manage Settings", "Close Shift"
+    "Delete Entries", "View Dashboard", "View Games", "View Vendors",
+    "Export / Backup", "Manage Agents", "Manage Settings", "Close Shift"
   ];
+  const AGENT_PANEL_PERMISSIONS = ["View Entries", "Add Paid Recharge", "Add Freeplay", "Add Redeem"];
   const ROLE_DEFAULTS = {
     owner: PERMISSIONS.slice(),
     admin: PERMISSIONS.slice(),
     manager: PERMISSIONS.filter((item) => !["Delete Entries", "Manage Agents", "Manage Settings"].includes(item)),
-    supervisor: ["View Entries", "Add Paid Recharge", "Add Freeplay", "Add Redeem", "View Dashboard", "View Games", "View Expenses", "Close Shift"],
-    agent: ["View Entries", "Add Paid Recharge", "Add Freeplay", "Add Redeem"]
+    supervisor: [...AGENT_PANEL_PERMISSIONS, "View Dashboard", "View Games", "Close Shift"],
+    agent: AGENT_PANEL_PERMISSIONS.slice()
   };
   const SQL_SCRIPT = `drop policy if exists "Allow all" on crm_config;
 drop policy if exists "Allow all" on entries;
@@ -196,6 +197,24 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function fmtPlain(value) {
     return num(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
+
+  function uniqueList(values) {
+    return [...new Set(values.filter(Boolean))];
+  }
+
+  function staffDefaultAdminAccess(role) {
+    return ["owner", "admin"].includes(role);
+  }
+
+  function staffPermsForRole(role, adminAccess) {
+    const base = AGENT_PANEL_PERMISSIONS.slice();
+    if (role === "agent" || !adminAccess) return base;
+    return uniqueList([...base, ...(ROLE_DEFAULTS[role] || [])]);
+  }
+
+  function cleanPerms(perms) {
+    return uniqueList(perms || []).filter((perm) => PERMISSIONS.includes(perm));
   }
 
   function cleanReason(value, key) {
@@ -388,15 +407,20 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     db.staff = db.staff.map((staff) => {
       const role = staff.role || "manager";
       const operational = ["manager", "supervisor", "agent"].includes(role);
+      const legacyAdminAccess = (staff.perms || []).includes("View Dashboard") || ["owner", "admin"].includes(role);
+      const adminAccess = role !== "agent" && (typeof staff.adminAccess === "boolean" ? staff.adminAccess : legacyAdminAccess);
       return {
         role,
         shiftId: "",
         color: "#8796a3",
+        adminAccess,
         attendanceRequired: operational,
         showInDeposits: operational,
         targets: { newPlayers: 0, deposit: 0 },
-        perms: ROLE_DEFAULTS[role] ? ROLE_DEFAULTS[role].slice() : [],
+        perms: staffPermsForRole(role, adminAccess),
         ...staff,
+        adminAccess,
+        perms: staff.perms ? cleanPerms([...AGENT_PANEL_PERMISSIONS, ...(adminAccess ? ["View Dashboard", ...staff.perms] : [])]) : staffPermsForRole(role, adminAccess),
         targets: { newPlayers: 0, deposit: 0, ...(staff.targets || {}) }
       };
     });
@@ -454,6 +478,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       txPlayerLookup: "",
       editVendorFeeId: "",
       month: monthKey(),
+      pnlMonth: monthKey(),
       modal: null,
       adminAuthed: false,
       adminUserId: "",
@@ -662,13 +687,29 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     return [...DB.entries.map((entry) => ({ ...entry, shiftSession: entry.shiftSession || "Current" })), ...closed];
   }
 
+  function entryRef(id) {
+    const current = DB.entries.find((entry) => entry.id === id);
+    if (current) return { entry: current, current: true, shift: null };
+    for (const shift of DB.closedShifts) {
+      const entry = (shift.entries || []).find((item) => item.id === id);
+      if (entry) return { entry, current: false, shift };
+    }
+    return null;
+  }
+
+  function gameUsage(game) {
+    const entries = allEntries().filter((entry) => entry.gameId === game.id || entry.gameName === game.name);
+    const paid = entries.filter((entry) => entry.type === "paid").reduce((sum, entry) => sum + num(entry.recharge), 0);
+    const freeplay = entries.filter((entry) => entry.type === "freeplay").reduce((sum, entry) => sum + num(entry.fpAmount), 0);
+    const redeem = entries.filter((entry) => entry.type === "redeem").reduce((sum, entry) => sum + num(entry.rdCredits), 0);
+    const used = paid + freeplay;
+    return { paid, freeplay, used, redeem, current: num(game.backendLoaded) - used + redeem };
+  }
+
   function gameBal(gameId) {
     const game = DB.games.find((item) => item.id === gameId || item.name === gameId);
     if (!game) return 0;
-    const entries = allEntries().filter((entry) => entry.gameId === game.id || entry.gameName === game.name);
-    const paid = entries.filter((entry) => entry.type === "paid").reduce((sum, entry) => sum + num(entry.recharge), 0);
-    const redeemed = entries.filter((entry) => entry.type === "redeem").reduce((sum, entry) => sum + num(entry.rdCredits), 0);
-    return num(game.backendLoaded) - paid + redeemed;
+    return gameUsage(game).current;
   }
 
   function shiftKPIs() {
@@ -722,6 +763,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       pageName: entry.pageName || "",
       huntingProfile: entry.huntingProfile || "",
       salesName: entry.salesName || "",
+      dispute: !!entry.dispute,
+      disputeNote: entry.disputeNote || "",
       promoP: num(entry.promoP)
     };
     return {
@@ -780,6 +823,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       pageName: meta.pageName || "",
       huntingProfile: meta.huntingProfile || "",
       salesName: meta.salesName || "",
+      dispute: !!meta.dispute,
+      disputeNote: meta.disputeNote || "",
       legalName: row.legal_name || "",
       contact: row.contact || "",
       email: row.email || "",
@@ -923,7 +968,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       await deleteAllRows("entries");
       await deleteAllRows("closed_shifts");
       await deleteAllRows("attendance");
-      await upsertRows("entries", DB.entries.map((entry) => entryToRow(entry, "Current")));
+      await upsertRows("entries", DB.entries.map((entry) => entryToRow(entry, entry.shiftSession || "Current")));
       await upsertRows("closed_shifts", DB.closedShifts.map((shift) => ({
         id: shift.id,
         label: shift.label,
@@ -952,7 +997,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       if (!configRows || !configRows.length) return false;
       const config = JSON.parse(configRows[0].payload || "{}");
       const next = normalizeDB(config);
-      next.entries = (entryRows || []).map(rowToEntry).filter((entry) => (entry.shiftSession || "Current") === "Current");
+      next.entries = (entryRows || []).map(rowToEntry);
       next.closedShifts = (closedRows || []).map((row) => {
         let payload = {};
         try { payload = JSON.parse(row.summary || "{}"); } catch { payload = {}; }
@@ -1100,7 +1145,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function agentOptions() {
     const names = salesPeople().map((person) => person.name);
-    return [["", "Select Agent"], ...names.map((name) => [name, name])];
+    return [["", "Select"], ...names.map((name) => [name, name])];
   }
 
   function shiftOptions() {
@@ -1139,6 +1184,74 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     };
   }
 
+  function findGameForEntry(entry) {
+    return DB.games.find((game) => game.id === entry.gameId || game.name === entry.gameName) || null;
+  }
+
+  function entryCoinCost(entry) {
+    const game = findGameForEntry(entry);
+    const price = num(game?.pricePer1k);
+    if (!price) return 0;
+    const credits = entry.type === "paid" ? num(entry.recharge) : entry.type === "freeplay" ? num(entry.fpAmount) : 0;
+    return (credits / 1000) * price;
+  }
+
+  function entryRedeemValue(entry) {
+    if (entry.type !== "redeem") return 0;
+    const game = findGameForEntry(entry);
+    const price = num(game?.pricePer1k);
+    return price ? (num(entry.rdCredits) / 1000) * price : 0;
+  }
+
+  function entryGatewayFee(entry) {
+    if (entry.type !== "paid") return 0;
+    for (const vendor of DB.payVendors) {
+      const fee = (vendor.fees || []).find((item) => item.payMethodId === entry.payMethodId && (!item.payTag || item.payTag === entry.payTagLabel));
+      if (fee) return num(entry.deposit) * num(fee.fee) / 100;
+    }
+    return 0;
+  }
+
+  function pnlSummary(entries) {
+    const paid = entries.filter((entry) => entry.type === "paid");
+    const freeplay = entries.filter((entry) => entry.type === "freeplay");
+    const redeem = entries.filter((entry) => entry.type === "redeem");
+    const sales = paid.reduce((sum, entry) => sum + num(entry.recharge), 0);
+    const deposit = paid.reduce((sum, entry) => sum + num(entry.deposit), 0);
+    const coinCost = entries.reduce((sum, entry) => sum + entryCoinCost(entry), 0);
+    const gatewayFees = entries.reduce((sum, entry) => sum + entryGatewayFee(entry), 0);
+    const redeemedValue = entries.reduce((sum, entry) => sum + entryRedeemValue(entry), 0);
+    const cashouts = redeem.reduce((sum, entry) => sum + num(entry.cashoutPaid), 0);
+    const noCashoutRedeems = redeem.filter((entry) => num(entry.cashoutPaid) === 0 && num(entry.rdCredits) > 0);
+    const margin = sales - coinCost - gatewayFees - cashouts - redeemedValue;
+    return {
+      count: entries.length,
+      paidCount: paid.length,
+      freeplayCount: freeplay.length,
+      redeemCount: redeem.length,
+      sales,
+      deposit,
+      coinCost,
+      gatewayFees,
+      redeemedValue,
+      cashouts,
+      noCashoutRedeemCount: noCashoutRedeems.length,
+      noCashoutRedeemValue: noCashoutRedeems.reduce((sum, entry) => sum + entryRedeemValue(entry), 0),
+      margin,
+      marginPct: sales ? (margin / sales) * 100 : 0
+    };
+  }
+
+  function personMonthStats(name, key) {
+    const rows = allEntries().filter((entry) => entry.agent === name && String(entry.date || "").startsWith(key || monthKey()));
+    const paid = rows.filter((entry) => entry.type === "paid");
+    return {
+      sales: paid.reduce((sum, entry) => sum + num(entry.recharge), 0),
+      newPlayers: rows.filter((entry) => entry.isNewPlayer).length,
+      paidCount: paid.length
+    };
+  }
+
   function renderSalesTargetBanner() {
     const s = monthlySalesSummary();
     return `<section class="target-kpi-row">
@@ -1158,7 +1271,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         <div class="fg sales-form">
           ${formSection("Session Info", "tone-cyan", 3, `
             ${field("Date", dateInput("paid-date", f.date, "TM.setPF('date', this.value, false)", "required"))}
-            ${field("Shift", selectInput("paid-shift", [[activeShiftName(), activeShiftName()]], activeShiftName(), "", "disabled"))}
+            ${field("Shift", selectInput("paid-shift", shiftOptions(), f.shift || activeShiftName(), "TM.setPF('shift', this.value, false)"))}
             ${field("Sales Person", selectInput("paid-agent", agentOptions(), f.agent, "TM.setPF('agent', this.value, false)"))}
           `)}
           ${formSection("Player Info", "tone-purple", 3, `
@@ -1185,11 +1298,11 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
               <button type="button" class="t-yes ${f.depositOnPage ? "active" : ""}" onclick="TM.toggleDepositOnPage(true)">Yes</button>
               <button type="button" class="t-no ${!f.depositOnPage ? "active" : ""}" onclick="TM.toggleDepositOnPage(false)">No</button>
             </div></label>
-            ${field("Page Name", selectInput("paid-page", [["", "Not Applicable"], ...DB.pageNames.map((page) => [page.name, page.name])], f.depositOnPage ? f.pageName : "", "TM.setPF('pageName', this.value, false)", f.depositOnPage ? "" : "disabled"))}
+            ${field("Page Name", selectInput("paid-page", [["", "Select Page Name"], ...DB.pageNames.map((page) => [page.name, page.name])], f.depositOnPage ? f.pageName : "", "TM.setPF('pageName', this.value, false)", f.depositOnPage ? "" : "disabled"))}
             ${field("Hunting Profile Name", textInput("paid-hunting", f.huntingProfile, "TM.setPF('huntingProfile', this.value, false)", `${f.depositOnPage ? "disabled" : ""} placeholder=\"Profile name\"`))}
           `)}
           ${formSection("New Player", "tone-red", 4, `
-            ${field("Sales Agent", selectInput("paid-sales", [["", "Select Sales Person"], ...salesPeople().map((person) => [person.name, person.name])], f.salesName, "TM.setPF('salesName', this.value, false)"))}
+            ${field("Sales Agent", selectInput("paid-sales", [["", "Select"], ...salesPeople().map((person) => [person.name, person.name])], f.salesName, "TM.setPF('salesName', this.value, false)"))}
             ${field("Player Legal Name", textInput("paid-legal", f.legalName, "TM.setPF('legalName', this.value, false)", "placeholder=\"Full legal name\""))}
             ${field("Contact Number", textInput("paid-contact", f.contact, "TM.setPF('contact', this.value, false)", "placeholder=\"Phone number\""))}
             ${field("Email", `<input type="email" value="${esc(f.email)}" oninput="TM.setPF('email', this.value, false)" placeholder="player@email.com">`)}
@@ -1214,7 +1327,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         <div class="fg sales-form">
           ${formSection("Session Info", "tone-cyan", 3, `
             ${field("Date", dateInput("free-date", f.date, "TM.setFF('date', this.value, false)", "required"))}
-            ${field("Shift", selectInput("free-shift", [[activeShiftName(), activeShiftName()]], activeShiftName(), "", "disabled"))}
+            ${field("Shift", selectInput("free-shift", shiftOptions(), f.shift || activeShiftName(), "TM.setFF('shift', this.value, false)"))}
             ${field("Sales Person", selectInput("free-agent", agentOptions(), f.agent, "TM.setFF('agent', this.value, false)"))}
           `)}
           ${formSection("Player Info", "tone-purple", 3, `
@@ -1227,7 +1340,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
             ${field("Game ID", textInput("free-gameid", f.gameId, "TM.setFF('gameId', this.value, false)", "required placeholder=\"Unique player game ID\""))}
           `)}
           ${formSection("New Player", "tone-red", 4, `
-            ${field("Sales Agent", selectInput("free-sales", [["", "Select Sales Person"], ...salesPeople().map((person) => [person.name, person.name])], f.salesName, "TM.setFF('salesName', this.value, false)"))}
+            ${field("Sales Agent", selectInput("free-sales", [["", "Select"], ...salesPeople().map((person) => [person.name, person.name])], f.salesName, "TM.setFF('salesName', this.value, false)"))}
             ${field("Player Legal Name", textInput("free-legal", f.legalName, "TM.setFF('legalName', this.value, false)", "placeholder=\"Full legal name\""))}
             ${field("Contact Number", textInput("free-contact", f.contact, "TM.setFF('contact', this.value, false)", "placeholder=\"Phone number\""))}
             ${field("Email", `<input type="email" value="${esc(f.email)}" oninput="TM.setFF('email', this.value, false)" placeholder="player@email.com">`)}
@@ -1242,9 +1355,37 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     </section>`;
   }
 
+  function redeemLookupInfo(gameId) {
+    const id = String(gameId || "").trim();
+    if (!id) return "";
+    const rows = allEntries().filter((entry) => entry.gameId === id).sort((a, b) => String(b.createdAt || b.date).localeCompare(String(a.createdAt || a.date)));
+    const paidRows = rows.filter((entry) => entry.type === "paid");
+    const freeRows = rows.filter((entry) => entry.type === "freeplay");
+    const redeemRows = rows.filter((entry) => entry.type === "redeem");
+    const latest = paidRows[0] || rows[0];
+    if (!latest) return `<div class="hint full">No previous player record found for this Game ID.</div>`;
+    const totalRecharge = paidRows.reduce((sum, entry) => sum + num(entry.recharge), 0);
+    const totalFreeplay = freeRows.reduce((sum, entry) => sum + num(entry.fpAmount), 0);
+    const totalRedeemed = redeemRows.reduce((sum, entry) => sum + num(entry.rdCredits), 0);
+    const totalCashout = redeemRows.reduce((sum, entry) => sum + num(entry.cashoutPaid), 0);
+    const link = latest.playerUrl ? `<a href="${esc(latest.playerUrl)}" target="_blank" rel="noreferrer">Open Facebook Link</a>` : `<span class="muted">No Facebook Link</span>`;
+    return `<div class="hint full lookup-grid">
+      <span><b>Player Name</b>${esc(latest.playerName || "Not Provided")}</span>
+      <span><b>Game Name</b>${esc(latest.gameName || "Not Provided")}</span>
+      <span><b>Sales Person</b>${esc(latest.agent || "Not Provided")}</span>
+      <span><b>Legal Name</b>${esc(latest.legalName || "Not Provided")}</span>
+      <span><b>Contact Number</b>${esc(latest.contact || "Not Provided")}</span>
+      <span><b>Email</b>${esc(latest.email || "Not Provided")}</span>
+      <span><b>Player Facebook Link</b>${link}</span>
+      <span><b>Total Recharge</b>${fmt$(totalRecharge)}</span>
+      <span><b>Total Credits Given</b>${fmt$(totalRecharge + totalFreeplay)}</span>
+      <span><b>Total Redeem Credits</b>${fmtPlain(totalRedeemed)}</span>
+      <span><b>Total Cashout Paid</b>${fmt$(totalCashout)}</span>
+    </div>`;
+  }
+
   function renderRedeemTab() {
     const f = S.rf;
-    const match = f.gameId ? activeEntries().filter((entry) => entry.type === "paid" && entry.gameId === f.gameId).slice(-1)[0] : null;
     return `<section class="stack">
       ${renderSalesTargetBanner()}
       <form class="fc sales-sheet" onsubmit="TM.submitRedeem(event)" novalidate>
@@ -1252,7 +1393,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         <div class="fg sales-form">
           ${formSection("Session Info", "tone-cyan", 3, `
             ${field("Date", dateInput("redeem-date", f.date, "TM.setRF('date', this.value, false)", "required"))}
-            ${field("Shift", selectInput("redeem-shift", [[activeShiftName(), activeShiftName()]], activeShiftName(), "", "disabled"))}
+            ${field("Shift", selectInput("redeem-shift", shiftOptions(), f.shift || activeShiftName(), "TM.setRF('shift', this.value, false)"))}
             ${field("Sales Person", selectInput("redeem-agent", agentOptions(), f.agent, "TM.setRF('agent', this.value, false)"))}
           `)}
           ${formSection("Cashout Details", "tone-red", 4, `
@@ -1261,7 +1402,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
             ${field("Redeem Credits", numberInput("redeem-credits", f.rdCredits, "TM.setRF('rdCredits', this.value, false)", "required min=\"0\" placeholder=\"0\""))}
             ${field("Cashout Paid", numberInput("redeem-cashout", f.cashoutPaid, "TM.setRF('cashoutPaid', this.value, false)", "required min=\"0\" placeholder=\"0.00\""))}
           `)}
-          ${match ? `<div class="hint full">Last paid entry found: ${esc(match.playerName)} on ${esc(match.gameName)}. Last recharge ${fmt$(match.recharge)}. Legal name ${esc(match.legalName || "not provided")}. Contact ${esc(match.contact || "not provided")}. Agent ${esc(match.agent)}.</div>` : ""}
+          ${redeemLookupInfo(f.gameId)}
           <div class="row end full">
             <button type="button" class="btn btn-ghost" onclick="TM.clearRedeem()">Clear</button>
             <button class="btn btn-danger" ${IS_ONLINE ? "" : "disabled"}>Add Redeem</button>
@@ -1275,13 +1416,13 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function renderGameBalanceTab() {
     return `<section class="game-balance-grid">
       ${DB.games.map((game) => {
-        const recharged = allEntries().filter((entry) => entry.type === "paid" && (entry.gameId === game.id || entry.gameName === game.name)).reduce((sum, entry) => sum + num(entry.recharge), 0);
-        const current = gameBal(game.id);
+        const usage = gameUsage(game);
         return `<article class="balance-card game-balance-card">
           <span class="badge bd-purple">${esc(game.name)}</span>
-          <div class="row between"><span class="muted">Backend Loaded</span><strong>${fmt$(game.backendLoaded)}</strong></div>
-          <div class="row between"><span class="muted">Total Recharged</span><strong class="danger-text">-${fmt$(recharged)}</strong></div>
-          <div class="row between"><span class="muted">Current Balance</span><strong class="${current >= 0 ? "success-text" : "danger-text"}">${fmt$(current)}</strong></div>
+          <div class="row between"><span class="muted">Starting Balance</span><strong>${fmt$(game.backendLoaded)}</strong></div>
+          <div class="row between"><span class="muted">Total Used</span><strong class="danger-text">-${fmt$(usage.used)}</strong></div>
+          <div class="row between"><span class="muted">Total Redeem</span><strong class="success-text">${fmt$(usage.redeem)}</strong></div>
+          <div class="row between"><span class="muted">Current Balance</span><strong class="${usage.current >= 0 ? "success-text" : "danger-text"}">${fmt$(usage.current)}</strong></div>
         </article>`;
       }).join("")}
     </section>`;
@@ -1367,7 +1508,11 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function entryBadges(entry) {
     const type = entry.type === "paid" ? `<span class="badge bd-cyan">Paid</span>` : entry.type === "freeplay" ? `<span class="badge bd-purple">Freeplay</span>` : `<span class="badge bd-red">Redeem</span>`;
-    return `${type}${entry.isNewPlayer ? ` <span class="badge bd-green">New</span>` : ""}`;
+    return `${type}${entry.isNewPlayer ? ` <span class="badge bd-green">New</span>` : ""}${entry.dispute ? ` <span class="badge bd-warn">Dispute</span>` : ""}`;
+  }
+
+  function entryStatus(entry) {
+    return entry.dispute ? `<span class="badge bd-warn">Dispute</span>${entry.disputeNote ? `<small class="subtle">${esc(entry.disputeNote)}</small>` : ""}` : `<span class="badge bd-green">Clear</span>`;
   }
 
   function gatewayFee(methodId, payTag) {
@@ -1384,6 +1529,11 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const day = s.daySummary || null;
     const isDay = s.closeType === "day";
     const title = isDay ? "Day Closed" : "Shift Closed";
+    const agentNames = uniqueList((last?.entries || []).map((entry) => entry.agent));
+    const agentRows = agentNames.map((agent) => {
+      const k = kpisForEntries((last?.entries || []).filter((entry) => entry.agent === agent));
+      return [esc(agent), fmtPlain(k.paidCount), fmt$(k.totalR), fmt$(k.totalDeposit), fmt$(k.totalFP), fmt$(k.totalCashout), fmtPlain(k.newPlayers)];
+    });
     return `<div class="content-scroll">
       <section class="fc closed-panel">
         <div class="fc-head">${title}</div>
@@ -1398,6 +1548,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
             <article class="kpi-card"><span>Cashouts</span><strong>${fmt$(s.totalCashout || 0)}</strong><small>Cashout paid</small></article>
           </div>
           <p>New Players: <strong>${s.newPlayers || 0}</strong>. Duration: <strong>${formatDuration(s.durationMins || 0)}</strong>.</p>
+          <h3>Sales Person Summary</h3>
+          ${simpleTable(["Sales Person", "Paid Recharges", "Sales Amount", "Deposit", "Freeplay", "Cashouts", "New Players"], agentRows)}
           ${day ? `<h3>Total Day Summary</h3><div class="grid c4">
             <article class="kpi-card"><span>Day Sales</span><strong>${fmt$(day.totalR || 0)}</strong><small>${day.paidCount || 0} paid records</small></article>
             <article class="kpi-card"><span>Day Deposit</span><strong>${fmt$(day.totalDeposit || 0)}</strong><small>${day.closedShiftCount || 1} shifts</small></article>
@@ -1415,6 +1567,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       ["dashboard", "Dashboard"],
       ["transactions", "Transactions"],
       ["performance", "Agent Performance"],
+      ["targets", "Targets"],
+      ["pnl", "P&L"],
       ["attendance", "Attendance"],
       ["shifts", "Shifts"],
       ["agents", "Agents"],
@@ -1423,7 +1577,6 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       ["payMethods", "Payment Methods"],
       ["pages", "Page Names"],
       ["vendors", "Vendors"],
-      ["expenses", "Expenses"],
       ["supabase", "Supabase"],
       ["settings", "Settings"],
       ["backup", "Backup & Export"]
@@ -1438,6 +1591,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     switch (S.adminSection) {
       case "transactions": return renderAdminTransactions();
       case "performance": return renderAdminPerformance();
+      case "targets": return renderAdminTargets();
+      case "pnl": return renderAdminProfitLoss();
       case "attendance": return renderAdminAttendance();
       case "shifts": return renderAdminShifts();
       case "agents": return renderAdminAgents();
@@ -1446,7 +1601,6 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       case "payMethods": return renderAdminPayMethods();
       case "pages": return renderAdminPages();
       case "vendors": return renderAdminVendors();
-      case "expenses": return renderAdminExpenses();
       case "supabase": return renderAdminSupabase();
       case "settings": return renderAdminSettings();
       case "backup": return renderAdminBackup();
@@ -1461,12 +1615,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const redeem = entries.filter((entry) => entry.type === "redeem");
     const shift = shiftKPIs();
     const target = monthlySalesSummary();
+    const pnl = pnlSummary(entries.filter((entry) => String(entry.date || "").startsWith(monthKey())));
     return `<div class="stack">
-      <section class="target-kpi-row">
-        <article class="kpi-card"><span>Monthly Team Sales Target</span><strong>${target.salesTarget ? fmt$(target.salesTarget) : "Not Set"}</strong><small>Achieved ${fmt$(target.recharge)}${target.salesTarget ? ` (${target.salesPct}%)` : ""}</small><div class="progress-bar"><i style="width:${target.salesPct}%"></i></div></article>
-        <article class="kpi-card"><span>Monthly New Player Target</span><strong>${target.playersTarget ? fmtPlain(target.playersTarget) : "Not Set"}</strong><small>Achieved ${fmtPlain(target.newPlayers)}${target.playersTarget ? ` (${target.playersPct}%)` : ""}</small><div class="progress-bar"><i style="width:${target.playersPct}%"></i></div></article>
-        <article class="kpi-card"><span>Target Settings</span><strong>Monthly Targets</strong><small>Change sales and player targets here.</small><button class="btn btn-primary btn-sm" onclick="TM.setAdmin('settings')">Set Monthly Targets</button></article>
-      </section>
       <section class="fc"><div class="fc-head">Current Shift Live Summary</div><div class="fg grid c5 dashboard-shift-grid">
         <article class="kpi-card"><span>Paid Count</span><strong>${shift.paidCount}</strong><small>Current Shift</small></article>
         <article class="kpi-card"><span>Sales Amount</span><strong>${fmt$(shift.totalR)}</strong><small>Current Shift</small></article>
@@ -1480,7 +1630,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         <article class="kpi-card"><span>Total Freeplay</span><strong>${fmt$(freeplay.reduce((sum, entry) => sum + num(entry.fpAmount), 0))}</strong><small>${freeplay.length} records</small></article>
         <article class="kpi-card"><span>Cashouts Paid</span><strong>${fmt$(redeem.reduce((sum, entry) => sum + num(entry.cashoutPaid), 0))}</strong><small>${redeem.length} records</small></article>
         <article class="kpi-card"><span>Current Month New Players</span><strong>${target.newPlayers}</strong><small>This Month</small></article>
-        <article class="kpi-card"><span>Total Expenses</span><strong>${fmtPKR(DB.expenses.reduce((sum, expense) => sum + num(expense.amount), 0))}</strong><small>${DB.expenses.length} records</small></article>
+        <article class="kpi-card"><span>Current Month Margin</span><strong class="${pnl.margin >= 0 ? "success-text" : "danger-text"}">${fmt$(pnl.margin)}</strong><small>${fmtPlain(pnl.marginPct)}% margin</small></article>
         <article class="kpi-card"><span>Active Games</span><strong>${DB.games.length}</strong><small>Configured games</small></article>
         <article class="kpi-card"><span>Closed Shifts</span><strong>${DB.closedShifts.length}</strong><small>Archived shifts</small></article>
       </section>
@@ -1488,8 +1638,99 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         <div class="fc dashboard-compact"><div class="fc-head">Game Balances</div><div class="fg">${simpleTable(["Game", "Loaded", "Current"], DB.games.map((game) => [esc(game.name), fmt$(game.backendLoaded), `<span class="${gameBal(game.id) >= 0 ? "success-text" : "danger-text"}">${fmt$(gameBal(game.id))}</span>`]))}</div></div>
         <div class="fc dashboard-compact"><div class="fc-head">Vendor Amount to Receive</div><div class="fg">${renderVendorNetTable()}</div></div>
       </section>
-      <section class="fc"><div class="fc-head">Recent Expenses</div><div class="fg">${simpleTable(["Date", "Category", "Description", "Amount"], DB.expenses.slice().sort((a,b) => String(b.date).localeCompare(String(a.date))).slice(0,5).map((expense) => [esc(isoToLabel(expense.date)), esc(expense.category), esc(expense.description), `<span class="danger-text">${fmtPKR(expense.amount)}</span>`]))}</div></section>
     </div>`;
+  }
+
+  function renderAdminTargets() {
+    const s = monthlySalesSummary();
+    const key = monthKey();
+    const people = combinedPeople();
+    const rows = people.map((person) => {
+      const stats = personMonthStats(person.name, key);
+      const salesTarget = num(person.targets?.deposit);
+      const playerTarget = num(person.targets?.newPlayers);
+      const salesLeft = Math.max(salesTarget - stats.sales, 0);
+      const playersLeft = Math.max(playerTarget - stats.newPlayers, 0);
+      const sourceLabel = person.source === "agent" ? "Agent" : "Staff";
+      return `<tr>
+        <td>${esc(person.name)}</td>
+        <td>${esc(sourceLabel)}</td>
+        <td>${roleBadge(person.role)}</td>
+        <td><input id="target-${person.source}-${person.id}-sales" type="number" min="0" step="0.01" value="${esc(salesTarget)}"></td>
+        <td>${fmt$(stats.sales)}</td>
+        <td>${fmt$(salesLeft)}</td>
+        <td><input id="target-${person.source}-${person.id}-players" type="number" min="0" step="1" value="${esc(playerTarget)}"></td>
+        <td>${fmtPlain(stats.newPlayers)}</td>
+        <td>${fmtPlain(playersLeft)}</td>
+      </tr>`;
+    }).join("");
+    return `<section class="stack">
+      <div class="fc"><div class="fc-head">Team Targets</div><div class="fg stack">
+        <div class="grid c4 admin-kpi-grid">
+          <article class="kpi-card"><span>Monthly Team Sales Target</span><strong>${s.salesTarget ? fmt$(s.salesTarget) : "Not Set"}</strong><small>Achieved ${fmt$(s.recharge)}${s.salesTarget ? ` (${s.salesPct}%)` : ""}</small><div class="progress-bar"><i style="width:${s.salesPct}%"></i></div></article>
+          <article class="kpi-card"><span>Sales Target Remaining</span><strong>${fmt$(Math.max(s.salesTarget - s.recharge, 0))}</strong><small>Monthly recharge counts as sales</small></article>
+          <article class="kpi-card"><span>Monthly New Player Target</span><strong>${s.playersTarget ? fmtPlain(s.playersTarget) : "Not Set"}</strong><small>Achieved ${fmtPlain(s.newPlayers)}${s.playersTarget ? ` (${s.playersPct}%)` : ""}</small><div class="progress-bar"><i style="width:${s.playersPct}%"></i></div></article>
+          <article class="kpi-card"><span>New Player Target Remaining</span><strong>${fmtPlain(Math.max(s.playersTarget - s.newPlayers, 0))}</strong><small>Current month</small></article>
+        </div>
+        <div class="grid c2">
+          ${field("Monthly Team Sales Target", `<input id="target-sales" type="number" step="0.01" min="0" value="${esc(DB.salesTargets.monthlySales)}">`)}
+          ${field("Monthly New Player Target", `<input id="target-players" type="number" step="1" min="0" value="${esc(DB.salesTargets.monthlyNewPlayers)}">`)}
+        </div>
+        <div class="row"><button class="btn btn-primary" onclick="TM.saveTargets()" ${IS_ONLINE ? "" : "disabled"}>Save Targets</button><span id="sales-target-save-msg" class="success-text"></span></div>
+      </div></div>
+      <div class="fc"><div class="fc-head">Individual Monthly Targets</div><div class="fg stack">
+        <div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Source</th><th>Role</th><th>Sales Target</th><th>Sales Achieved</th><th>Sales Remaining</th><th>New Player Target</th><th>New Players Achieved</th><th>New Players Remaining</th></tr></thead><tbody>
+          ${rows || `<tr><td colspan="9" class="empty">No people found.</td></tr>`}
+        </tbody></table></div>
+      </div></div>
+    </section>`;
+  }
+
+  function renderAdminProfitLoss() {
+    const key = S.pnlMonth || monthKey();
+    const rows = allEntries().filter((entry) => String(entry.date || "").startsWith(key));
+    const summary = pnlSummary(rows);
+    const gameRows = DB.games.map((game) => {
+      const gameEntries = rows.filter((entry) => entry.gameId === game.id || entry.gameName === game.name);
+      const p = pnlSummary(gameEntries);
+      return [
+        esc(game.name),
+        fmtPlain(p.paidCount),
+        fmt$(p.sales),
+        fmt$(p.gatewayFees),
+        fmt$(p.coinCost),
+        fmt$(p.redeemedValue),
+        fmt$(p.cashouts),
+        `<span class="${p.margin >= 0 ? "success-text" : "danger-text"}">${fmt$(p.margin)}</span>`,
+        `${fmtPlain(p.marginPct)}%`
+      ];
+    });
+    return `<section class="stack">
+      <div class="fc"><div class="fc-head">Profit and Loss</div><div class="fg stack">
+        <div class="grid c3">
+          ${field("Month", `<input id="pnl-month" type="month" value="${esc(key)}" onchange="TM.setS('pnlMonth', this.value)">`)}
+          <div class="row end"><button class="btn btn-primary" onclick="TM.renderNow()">Apply Month</button></div>
+        </div>
+        <div class="grid c4 admin-kpi-grid">
+          <article class="kpi-card"><span>Sales Amount</span><strong>${fmt$(summary.sales)}</strong><small>${summary.paidCount} paid transactions</small></article>
+          <article class="kpi-card"><span>Gateway Fees</span><strong>${fmt$(summary.gatewayFees)}</strong><small>Payment vendor fee</small></article>
+          <article class="kpi-card"><span>Coins Issued Cost</span><strong>${fmt$(summary.coinCost)}</strong><small>Paid and freeplay credits</small></article>
+          <article class="kpi-card"><span>Redeemed Credits Value</span><strong>${fmt$(summary.redeemedValue)}</strong><small>${summary.noCashoutRedeemCount} without cashout</small></article>
+          <article class="kpi-card"><span>Cashouts Paid</span><strong>${fmt$(summary.cashouts)}</strong><small>${summary.redeemCount} redeem records</small></article>
+          <article class="kpi-card"><span>Estimated Margin</span><strong class="${summary.margin >= 0 ? "success-text" : "danger-text"}">${fmt$(summary.margin)}</strong><small>${fmtPlain(summary.marginPct)}% margin</small></article>
+        </div>
+      </div></div>
+      <div class="fc"><div class="fc-head">Game Profit and Loss</div><div class="fg">${simpleTable(["Game", "Paid Transactions", "Sales Amount", "Gateway Fees", "Coins Issued Cost", "Redeemed Credits Value", "Cashouts Paid", "Estimated Margin", "Margin Percentage"], gameRows)}</div></div>
+      <div class="fc"><div class="fc-head">Transaction Cost Detail</div><div class="fg">${simpleTable(["Date", "Type", "Sales Person", "Player Name", "Game Name", "Sales Amount", "Gateway Fee", "Coins Issued Cost", "Redeemed Credits Value", "Cashout Paid", "Margin"], rows.map((entry) => {
+        const sales = entry.type === "paid" ? num(entry.recharge) : 0;
+        const cost = entryCoinCost(entry);
+        const gateway = entryGatewayFee(entry);
+        const redeemed = entryRedeemValue(entry);
+        const cashout = entry.type === "redeem" ? num(entry.cashoutPaid) : 0;
+        const margin = sales - gateway - cost - redeemed - cashout;
+        return [esc(isoToLabel(entry.date)), entryBadges(entry), esc(entry.agent), esc(entry.playerName), esc(entry.gameName), fmt$(sales), fmt$(gateway), fmt$(cost), fmt$(redeemed), fmt$(cashout), `<span class="${margin >= 0 ? "success-text" : "danger-text"}">${fmt$(margin)}</span>`];
+      }))}</div></div>
+    </section>`;
   }
 
   function simpleTable(heads, rows) {
@@ -1539,8 +1780,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       </div>
       <p class="muted">${rows.length} records. Total deposit ${fmt$(totalDeposit)}. Total recharge ${fmt$(totalRecharge)}. Total cashout ${fmt$(totalCashout)}.</p>
       ${renderPlayerLookupPanel()}
-      <div class="tbl-wrap"><table><thead><tr><th>#</th><th>Type</th><th>Session</th><th>Date</th><th>Agent</th><th>Player</th><th>Game ID</th><th>Game</th><th>Deposit</th><th>Amount</th><th>Cashout</th></tr></thead><tbody>
-      ${rows.map((entry, index) => `<tr><td>${index + 1}</td><td>${entryBadges(entry)}</td><td>${esc(entry.shiftSession || "Current")}</td><td>${esc(isoToLabel(entry.date))}</td><td>${esc(entry.agent)}</td><td>${esc(entry.playerName)}</td><td class="mono">${esc(entry.gameId)}</td><td>${esc(entry.gameName)}</td><td>${fmt$(entry.deposit)}</td><td>${entry.type === "paid" ? fmt$(entry.recharge) : entry.type === "freeplay" ? fmt$(entry.fpAmount) : fmtPlain(entry.rdCredits)}</td><td>${fmt$(entry.cashoutPaid)}</td></tr>`).join("") || `<tr><td colspan="11" class="empty">No transactions match these filters.</td></tr>`}
+      <div class="tbl-wrap"><table><thead><tr><th>#</th><th>Type</th><th>Session</th><th>Date</th><th>Sales Person</th><th>Player Name</th><th>Game ID</th><th>Game Name</th><th>Deposit</th><th>Amount / Credits</th><th>Cashout Paid</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+      ${rows.map((entry, index) => `<tr class="${entry.dispute ? "dispute-row" : ""}"><td>${index + 1}</td><td>${entryBadges(entry)}</td><td>${esc(entry.shiftSession || "Current")}</td><td>${esc(isoToLabel(entry.date))}</td><td>${esc(entry.agent)}</td><td>${esc(entry.playerName)}</td><td class="mono">${esc(entry.gameId)}</td><td>${esc(entry.gameName)}</td><td>${fmt$(entry.deposit)}</td><td>${entry.type === "paid" ? fmt$(entry.recharge) : entry.type === "freeplay" ? fmt$(entry.fpAmount) : `${fmtPlain(entry.rdCredits)} credits`}</td><td>${fmt$(entry.cashoutPaid)}</td><td>${entryStatus(entry)}</td><td><div class="row"><button class="btn btn-xs btn-ghost" onclick="TM.editEntry('${entry.id}')">Edit</button><button class="btn btn-xs btn-danger" onclick="TM.deleteEntry('${entry.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete</button></div></td></tr>`).join("") || `<tr><td colspan="13" class="empty">No transactions match these filters.</td></tr>`}
       </tbody></table></div>
     </div></div>`;
   }
@@ -1878,9 +2119,9 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function renderVendorNetTable() {
     const rows = DB.payVendors.map((vendor) => {
       const totals = vendorTotals(vendor);
-      return [esc(vendor.name), fmt$(totals.deposits), fmt$(totals.fees), `<strong>${fmt$(totals.net)}</strong>`];
+      return [esc(vendor.name), fmt$(totals.deposits), fmt$(totals.fees), fmt$(totals.paid), fmt$(totals.deductions), `<strong class="${totals.pending >= 0 ? "success-text" : "danger-text"}">${fmt$(totals.pending)}</strong>`];
     });
-    return simpleTable(["Vendor", "Deposits", "Fee Deducted", "Amount to Receive"], rows);
+    return simpleTable(["Vendor", "Deposits", "Fee Deducted", "Paid Received", "Disputes / Deductions", "Pending Amount"], rows);
   }
 
   function vendorTotals(vendor) {
@@ -1891,7 +2132,11 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       deposits += sum;
       fees += sum * num(fee.fee) / 100;
     });
-    return { deposits, fees, net: deposits - fees };
+    const net = deposits - fees;
+    const paid = vendorPaid(vendor);
+    const deductions = vendorDeductions(vendor);
+    const pending = net - paid - deductions;
+    return { deposits, fees, net, paid, deductions, pending };
   }
 
   function vendorDeductions(vendor) {
@@ -1911,16 +2156,13 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function renderVendorPaymentsDashboard() {
     const rows = DB.payVendors.map((vendor) => {
       const totals = vendorTotals(vendor);
-      const paid = vendorPaid(vendor);
-      const deductions = vendorDeductions(vendor);
-      const pending = totals.net - paid - deductions;
       return [
         esc(vendor.name),
         fmt$(totals.deposits),
         fmt$(totals.fees),
-        fmt$(deductions),
-        fmt$(paid),
-        `<strong class="${pending >= 0 ? "success-text" : "danger-text"}">${fmt$(pending)}</strong>`,
+        fmt$(totals.deductions),
+        fmt$(totals.paid),
+        `<strong class="${totals.pending >= 0 ? "success-text" : "danger-text"}">${fmt$(totals.pending)}</strong>`,
         `<div class="row"><button class="btn btn-xs btn-success" onclick="TM.recordVendorPayment('${vendor.id}')" ${IS_ONLINE ? "" : "disabled"}>Record Payment</button><button class="btn btn-xs btn-warn" onclick="TM.addVendorDeduction('${vendor.id}')" ${IS_ONLINE ? "" : "disabled"}>Add Deduction</button><button class="btn btn-xs btn-ghost" onclick="TM.viewVendorPaymentHistory('${vendor.id}')">View History</button></div>`
       ];
     });
@@ -1937,7 +2179,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       "Payment Received",
       fmt$(payment.amount),
       payment.at ? fmtDateTime(payment.at) : "No Date",
-      "",
+      esc([payment.reference, payment.note].filter(Boolean).join(" - ")),
       `<div class="row"><button class="btn btn-xs btn-ghost" onclick="TM.editVendorPayment('${vendor.id}','${payment.id}')" ${IS_ONLINE ? "" : "disabled"}>Edit</button><button class="btn btn-xs btn-danger" onclick="TM.deleteVendorPayment('${vendor.id}','${payment.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete</button></div>`
     ]);
     const deductions = (vendor.deductions || []).map((deduction) => [
@@ -1951,6 +2193,24 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     return modalWrap(`${vendor.name} Payment History`, simpleTable(["Entry Type", "Amount", "Date and Time", "Note", "Actions"], rows), `<button class="btn btn-ghost" onclick="TM.closeModal()">Close</button>`, true);
   }
 
+  function renderVendorPaymentModal() {
+    const vendor = DB.payVendors.find((item) => item.id === S.modal.vendorId);
+    if (!vendor) return modalWrap("Record Vendor Payment", `<div class="empty">Vendor not found.</div>`, `<button class="btn btn-ghost" onclick="TM.closeModal()">Close</button>`);
+    const totals = vendorTotals(vendor);
+    const now = new Date();
+    const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    return modalWrap("Record Vendor Payment", `<form id="vendor-payment-form" class="stack">
+      <p class="muted">${esc(vendor.name)} pending amount is ${fmt$(totals.pending)}.</p>
+      <div class="grid c2">
+        ${field("Amount Received", `<input id="vendor-payment-amount" type="number" step="0.01" min="0.01" value="${esc(Math.max(totals.pending, 0).toFixed(2))}" required>`)}
+        ${field("Received Date", dateInput("vendor-payment-date", todayISO(), "", "required"))}
+        ${field("Received Time", `<input id="vendor-payment-time" type="time" value="${time}" required>`)}
+        ${field("Reference", `<input id="vendor-payment-ref" placeholder="Transaction reference">`)}
+      </div>
+      ${field("Notes", `<textarea id="vendor-payment-note" placeholder="Notes"></textarea>`)}
+    </form>`, `<button class="btn btn-ghost" onclick="TM.closeModal()">Cancel</button><button class="btn btn-success" onclick="TM.saveVendorPayment()" ${IS_ONLINE ? "" : "disabled"}>Save Payment</button>`);
+  }
+
   function renderAdminVendors() {
     const section = S.vendorSection || "payment";
     const paymentSection = `<div class="stack">
@@ -1960,7 +2220,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         ${DB.payVendors.map((vendor) => {
           const totals = vendorTotals(vendor);
           return `<article class="balance-card"><div class="row between"><strong>${esc(vendor.name)}</strong><button class="btn btn-xs btn-danger" onclick="TM.deletePayVendor('${vendor.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete Vendor</button></div>
-            <div class="tbl-wrap"><table><thead><tr><th>Method</th><th>Pay Tag</th><th>Fee Percentage</th><th>Deposits Received</th><th>Fee Amount</th><th>Amount to Receive</th><th>Actions</th></tr></thead><tbody>
+            <div class="tbl-wrap"><table><thead><tr><th>Method</th><th>Pay Tag</th><th>Fee Percentage</th><th>Deposits Received</th><th>Fee Amount</th><th>Gross Amount to Receive</th><th>Actions</th></tr></thead><tbody>
             ${vendor.fees.map((fee) => {
               const deposits = allEntries().filter((entry) => entry.type === "paid" && entry.payMethodId === fee.payMethodId && (!fee.payTag || entry.payTagLabel === fee.payTag)).reduce((sum, entry) => sum + num(entry.deposit), 0);
               const feeAmount = deposits * num(fee.fee) / 100;
@@ -1968,7 +2228,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
               return `<tr><td>${esc(DB.payMethods.find((method) => method.id === fee.payMethodId)?.name || "")}</td><td>${esc(fee.payTag)}</td><td>${editing ? `<input id="edit-fee-${fee.id}" type="number" value="${esc(fee.fee)}">` : `${fmtPlain(fee.fee)}%`}</td><td>${fmt$(deposits)}</td><td>${fmt$(feeAmount)}</td><td><strong>${fmt$(deposits - feeAmount)}</strong></td><td><div class="row">${editing ? `<button class="btn btn-xs btn-success" onclick="TM.saveVendorFeeEdit('${vendor.id}','${fee.id}')" ${IS_ONLINE ? "" : "disabled"}>Save</button><button class="btn btn-xs btn-ghost" onclick="TM.cancelVendorFeeEdit()">Cancel</button>` : `<button class="btn btn-xs btn-ghost" onclick="TM.editVendorFee('${fee.id}')">Edit</button><button class="btn btn-xs btn-danger" onclick="TM.deleteVendorFee('${vendor.id}','${fee.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete</button>`}</div></td></tr>`;
             }).join("") || `<tr><td colspan="7" class="empty">No fee rows.</td></tr>`}
             </tbody></table></div>
-            <div class="vendor-total-row"><span>Total Deposits ${fmt$(totals.deposits)}</span><span>Total Fees ${fmt$(totals.fees)}</span><strong>Amount to Receive ${fmt$(totals.net)}</strong></div>
+            <div class="vendor-total-row"><span>Total Deposits ${fmt$(totals.deposits)}</span><span>Total Fees ${fmt$(totals.fees)}</span><span>Paid Received ${fmt$(totals.paid)}</span><span>Deductions ${fmt$(totals.deductions)}</span><strong>Pending Amount ${fmt$(totals.pending)}</strong></div>
             <div class="grid c4">${selectInput(`vendor-method-${vendor.id}`, DB.payMethods.map((method) => [method.id, method.name]), DB.payMethods[0]?.id || "")}<input id="vendor-fee-${vendor.id}" type="number" placeholder="Fee percentage"><input id="vendor-tag-${vendor.id}" placeholder="Payment tag"><button class="btn btn-primary" onclick="TM.addVendorFee('${vendor.id}')" ${IS_ONLINE ? "" : "disabled"}>Add Fee Row</button></div>
           </article>`;
         }).join("")}
@@ -2025,16 +2285,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function renderAdminSettings() {
-    const s = monthlySalesSummary();
     return `<section class="grid c2">
-      <div class="fc"><div class="fc-head">Monthly Targets</div><div class="fg stack">
-        <div class="grid c2">
-          ${field("Monthly Team Sales Target", `<input id="target-sales" type="number" step="0.01" min="0" value="${esc(DB.salesTargets.monthlySales)}">`)}
-          ${field("Monthly New Player Target", `<input id="target-players" type="number" step="1" min="0" value="${esc(DB.salesTargets.monthlyNewPlayers)}">`)}
-        </div>
-        <p class="muted">Current month achieved: ${fmt$(s.recharge)} sales recharge, ${fmt$(s.deposit)} deposit, and ${fmtPlain(s.newPlayers)} new players.</p>
-        <div class="row"><button class="btn btn-primary" onclick="TM.saveSalesTargets()" ${IS_ONLINE ? "" : "disabled"}>Save Sales Targets</button><span id="sales-target-save-msg" class="success-text"></span></div>
-      </div></div>
       <div class="fc"><div class="fc-head">Authorization Code</div><div class="fg stack">
         <p class="muted">This code is required when a recharge promo exceeds 100%. Only share with managers and admins.</p>
         ${field("Authorization Code", `<input id="override-code" type="password" autocomplete="new-password" value="${esc(DB.overrideCode)}">`)}
@@ -2046,10 +2297,9 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function renderAdminBackup() {
     return `<section class="grid c2">
       <div class="fc"><div class="fc-head">Export</div><div class="fg stack">
-        <p class="muted">Total entries: ${allEntries().length}. Closed shifts: ${DB.closedShifts.length}. Expenses: ${DB.expenses.length}.</p>
+        <p class="muted">Total entries: ${allEntries().length}. Closed shifts: ${DB.closedShifts.length}.</p>
         <button class="btn btn-primary" onclick="TM.exportJson()">Export JSON Backup</button>
         <button class="btn btn-success" onclick="TM.exportEntries()">Export Entries Comma Separated Values</button>
-        <button class="btn btn-warn" onclick="TM.exportExpenses()">Export Expenses Comma Separated Values</button>
       </div></div>
       <div class="fc"><div class="fc-head">Restore</div><div class="fg stack">
         <input type="file" accept="application/json" onchange="TM.loadRestoreFile(this.files[0])">
@@ -2064,6 +2314,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const type = S.modal.type;
     if (type === "adminLogin") return renderAdminLoginModal();
     if (type === "adminSetup") return renderFirstAdminSetupModal();
+    if (type === "vendorPayment") return renderVendorPaymentModal();
     if (type === "vendorPaymentHistory") return renderVendorPaymentHistoryModal();
     if (type === "override") return renderOverrideModal();
     if (type === "closeShift") return renderCloseShiftModal();
@@ -2155,7 +2406,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function renderEditEntryModal() {
-    const entry = DB.entries.find((item) => item.id === S.modal.entryId);
+    const ref = entryRef(S.modal.entryId);
+    const entry = ref?.entry;
     if (!entry) return "";
     return modalWrap("Edit Entry", `<form id="entry-edit-form" class="grid c3">
       ${field("Type", selectInput("edit-type", [["paid", "Paid"], ["freeplay", "Freeplay"], ["redeem", "Redeem"]], entry.type))}
@@ -2175,6 +2427,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       ${field("Player Legal Name", `<input id="edit-legal" value="${esc(entry.legalName || "")}">`)}
       ${field("Contact Number", `<input id="edit-contact" value="${esc(entry.contact || "")}">`)}
       ${field("Email", `<input id="edit-email" type="email" value="${esc(entry.email || "")}">`)}
+      <label class="pill"><input id="edit-dispute" type="checkbox" ${entry.dispute ? "checked" : ""}> Mark as Dispute</label>
+      ${field("Dispute Note", `<input id="edit-dispute-note" value="${esc(entry.disputeNote || "")}" placeholder="Reason or note">`, "span2")}
     </form>`, `<button class="btn btn-ghost" onclick="TM.closeModal()">Cancel</button><button class="btn btn-primary" onclick="TM.saveEntryEdit()" ${IS_ONLINE ? "" : "disabled"}>Save Entry</button>`, true);
   }
 
@@ -2207,7 +2461,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function renderStaffModal() {
     const staff = S.modal.staffId ? DB.staff.find((item) => item.id === S.modal.staffId) : null;
     const role = staff?.role || "manager";
-    const perms = staff?.perms || ROLE_DEFAULTS[role] || [];
+    const adminAccess = role !== "agent" && (staff ? !!staff.adminAccess : staffDefaultAdminAccess(role));
+    const perms = staff?.perms || staffPermsForRole(role, adminAccess);
     const attendanceRequired = staff ? !!staff.attendanceRequired : ["manager", "supervisor", "agent"].includes(role);
     const showInDeposits = staff ? !!staff.showInDeposits : ["manager", "supervisor", "agent"].includes(role);
     return modalWrap(staff ? "Edit Staff" : "Add Staff", `<form id="staff-form" class="stack">
@@ -2215,7 +2470,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         ${field("Full Name", `<input id="staff-name" value="${esc(staff?.name || "")}" required>`)}
         ${field("Email", `<input id="staff-email" type="email" value="${esc(staff?.email || "")}" required>`)}
         ${field("Role", selectInput("staff-role", [["admin", "Admin"], ["manager", "Manager"], ["supervisor", "Supervisor"], ["agent", "Agent"]], role, "TM.staffRoleChanged(this.value)"))}
-        ${field("PIN / Password", `<input id="staff-pin" type="password" autocomplete="new-password" value="${esc(staff?.pin || "")}" required>`)}
+        <label id="staff-pin-wrap" style="${adminAccess ? "" : "display:none"}">PIN / Password<input id="staff-pin" type="password" autocomplete="new-password" value="${esc(staff?.pin || "")}" ${adminAccess ? "required" : ""}></label>
         ${field("Shift", selectInput("staff-shift", [["", "No Shift"], ...DB.shifts.map((shift) => [shift.id, `${shift.name} (${shift.start}-${shift.end})`])], staff?.shiftId || ""))}
         ${field("Staff Color", `<input id="staff-color" type="color" value="${esc(staff?.color || "#8796a3")}">`)}
         ${field("Monthly New Player Target", `<input id="staff-target-players" type="number" min="0" value="${esc(staff?.targets?.newPlayers || 0)}">`)}
@@ -2224,9 +2479,13 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       <div class="grid c2">
         <label class="pill"><input id="staff-attendance-required" type="checkbox" ${attendanceRequired ? "checked" : ""}> Attendance Required</label>
         <label class="pill"><input id="staff-show-deposits" type="checkbox" ${showInDeposits ? "checked" : ""}> Show Name in Sales Forms</label>
+        <label id="staff-admin-row" class="pill" style="${role === "agent" ? "display:none" : ""}"><input id="staff-admin-access" type="checkbox" ${adminAccess ? "checked" : ""} onchange="TM.staffAdminAccessChanged()"> Admin Dashboard Access</label>
       </div>
-      <div class="row"><button type="button" class="btn btn-sm btn-ghost" onclick="TM.staffSelectAll()">Select All</button><button type="button" class="btn btn-sm btn-ghost" onclick="TM.staffClearAll()">Clear All</button><button type="button" class="btn btn-sm btn-ghost" onclick="TM.staffResetRole()">Reset to Role</button></div>
-      <div class="grid c3" id="perm-grid">${PERMISSIONS.map((perm) => `<label class="pill"><input type="checkbox" class="perm-check" value="${esc(perm)}" ${perms.includes(perm) ? "checked" : ""}> ${esc(perm)}</label>`).join("")}</div>
+      <p class="muted">Agent Panel access is included by default. Use Admin Dashboard Access only for people who should open the admin area.</p>
+      <div id="staff-admin-permissions" class="stack" style="${adminAccess ? "" : "display:none"}">
+        <div class="row"><button type="button" class="btn btn-sm btn-ghost" onclick="TM.staffSelectAll()">Select All</button><button type="button" class="btn btn-sm btn-ghost" onclick="TM.staffClearAll()">Clear All</button><button type="button" class="btn btn-sm btn-ghost" onclick="TM.staffResetRole()">Reset to Role</button></div>
+        <div class="grid c3" id="perm-grid">${PERMISSIONS.map((perm) => `<label class="pill"><input type="checkbox" class="perm-check" value="${esc(perm)}" ${perms.includes(perm) ? "checked" : ""}> ${esc(perm)}</label>`).join("")}</div>
+      </div>
     </form>`, `<button class="btn btn-ghost" onclick="TM.closeModal()">Cancel</button><button class="btn btn-primary" onclick="TM.saveStaff()" ${IS_ONLINE ? "" : "disabled"}>Save Staff</button>`, true);
   }
 
@@ -2281,7 +2540,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function adminCandidates() {
     return DB.staff.filter((staff) => {
       const perms = staff.perms || [];
-      return ["owner", "admin", "manager", "supervisor"].includes(staff.role) || perms.includes("View Dashboard");
+      return staff.role !== "agent" && !!staff.adminAccess && !!staff.pin && perms.includes("View Dashboard");
     });
   }
 
@@ -2340,7 +2599,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       if (error) error.textContent = "Password confirmation does not match.";
       return;
     }
-    const staff = { id: uid("staff"), name, email, role: "admin", pin, shiftId: "", color: "#8796a3", attendanceRequired: false, showInDeposits: false, targets: { newPlayers: 0, deposit: 0 }, perms: ROLE_DEFAULTS.admin.slice() };
+    const staff = { id: uid("staff"), name, email, role: "admin", pin, shiftId: "", color: "#8796a3", adminAccess: true, attendanceRequired: false, showInDeposits: false, targets: { newPlayers: 0, deposit: 0 }, perms: staffPermsForRole("admin", true) };
     DB.staff.unshift(staff);
     saveDB();
     pushConfig();
@@ -2443,10 +2702,16 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     if (page) {
       page.disabled = !value;
       if (!value) page.value = "";
-      else page.value = S.pf.pageName || DB.pageNames[0]?.name || "";
+      else page.value = S.pf.pageName || "";
       S.pf.pageName = page.value;
     }
-    if (hunting) hunting.disabled = value;
+    if (hunting) {
+      hunting.disabled = value;
+      if (value) {
+        hunting.value = "";
+        S.pf.huntingProfile = "";
+      }
+    }
   }
 
   function validateLink(input, hintId) {
@@ -2476,7 +2741,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       id: uid("entry"),
       type: "paid",
       date: f.date,
-      shift: activeShiftName(),
+      shift: f.shift || activeShiftName(),
       shiftSession: "Current",
       agent: f.agent,
       playerName: f.playerName.trim(),
@@ -2569,8 +2834,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function saveEntry(entry) {
     if (!isShiftOpen()) return alert("Start the current shift before adding entries.");
-    entry.shift = activeShiftName();
-    entry.shiftSession = `${activeShiftName()} - ${isoToLabel(entry.date)}`;
+    entry.shift = entry.shift || activeShiftName();
+    entry.shiftSession = `${entry.shift} - ${isoToLabel(entry.date)}`;
     DB.entries.unshift(entry);
     saveDB();
     syncEntry(entry);
@@ -2589,7 +2854,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const f = S.ff;
     const missing = [];
     if (!f.date) missing.push("free-date");
-    if (!activeShiftName()) missing.push("free-shift");
+    if (!f.shift) missing.push("free-shift");
     if (!f.agent) missing.push("free-agent");
     if (!f.playerName.trim()) missing.push("free-player");
     if (!f.fpAmount || num(f.fpAmount) <= 0) missing.push("free-amount");
@@ -2601,7 +2866,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       id: uid("entry"),
       type: "freeplay",
       date: f.date,
-      shift: activeShiftName(),
+      shift: f.shift || activeShiftName(),
       shiftSession: "Current",
       agent: f.agent,
       playerName: f.playerName.trim(),
@@ -2640,19 +2905,19 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const f = S.rf;
     const missing = [];
     if (!f.date) missing.push("redeem-date");
-    if (!activeShiftName()) missing.push("redeem-shift");
+    if (!f.shift) missing.push("redeem-shift");
     if (!f.agent) missing.push("redeem-agent");
     if (!f.gameId.trim()) missing.push("redeem-gameid");
     if (!f.gameName) missing.push("redeem-game");
     if (!f.rdCredits || num(f.rdCredits) <= 0) missing.push("redeem-credits");
-    if (!f.cashoutPaid || num(f.cashoutPaid) <= 0) missing.push("redeem-cashout");
+    if (f.cashoutPaid === "" || num(f.cashoutPaid) < 0) missing.push("redeem-cashout");
     if (missing.length) return showFieldErrors(missing, "Please complete the highlighted redeem fields.");
-    const paid = activeEntries().filter((entry) => entry.type === "paid" && entry.gameId === f.gameId).slice(-1)[0];
+    const paid = allEntries().filter((entry) => entry.type === "paid" && entry.gameId === f.gameId.trim()).sort((a, b) => String(b.createdAt || b.date).localeCompare(String(a.createdAt || a.date)))[0];
     const entry = {
       id: uid("entry"),
       type: "redeem",
       date: f.date,
-      shift: activeShiftName(),
+      shift: f.shift || activeShiftName(),
       shiftSession: "Current",
       agent: f.agent,
       playerName: paid?.playerName || "",
@@ -2698,8 +2963,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     S._pendingEntry = null;
     S.modal = null;
     if (entry) {
-      entry.shift = activeShiftName();
-      entry.shiftSession = `${activeShiftName()} - ${isoToLabel(entry.date)}`;
+      entry.shift = entry.shift || activeShiftName();
+      entry.shiftSession = `${entry.shift} - ${isoToLabel(entry.date)}`;
       DB.entries.unshift(entry);
       saveDB();
       syncEntry(entry);
@@ -2995,11 +3260,13 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function saveEntryEdit() {
     if (!checkOnline()) return;
-    const entry = DB.entries.find((item) => item.id === S.modal.entryId);
+    const ref = entryRef(S.modal.entryId);
+    const entry = ref?.entry;
     if (!entry) return;
     entry.type = document.getElementById("edit-type").value;
     entry.date = parseDateInput(document.getElementById("edit-date").value);
     entry.shift = document.getElementById("edit-shift").value;
+    entry.shiftSession = `${entry.shift} - ${isoToLabel(entry.date)}`;
     entry.agent = document.getElementById("edit-agent").value;
     entry.playerName = document.getElementById("edit-player").value.trim();
     entry.playerUrl = document.getElementById("edit-link").value.trim();
@@ -3016,9 +3283,12 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     entry.legalName = document.getElementById("edit-legal").value.trim();
     entry.contact = document.getElementById("edit-contact").value.trim();
     entry.email = document.getElementById("edit-email").value.trim();
+    entry.dispute = !!document.getElementById("edit-dispute")?.checked;
+    entry.disputeNote = document.getElementById("edit-dispute-note")?.value.trim() || "";
     entry.isNewPlayer = [entry.salesName, entry.legalName, entry.contact, entry.email].some((value) => String(value || "").trim());
     saveDB();
-    syncEntry(entry);
+    if (ref.current) syncEntry(entry);
+    else void sbPush();
     S.modal = null;
     render();
   }
@@ -3026,7 +3296,9 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function deleteEntry(id) {
     if (!checkOnline()) return;
     if (!confirm("Delete this entry?")) return;
-    DB.entries = DB.entries.filter((entry) => entry.id !== id);
+    const ref = entryRef(id);
+    if (ref?.current) DB.entries = DB.entries.filter((entry) => entry.id !== id);
+    else if (ref?.shift) ref.shift.entries = (ref.shift.entries || []).filter((entry) => entry.id !== id);
     saveDB();
     void sbPush();
     render();
@@ -3094,12 +3366,16 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function saveStaff() {
     if (!checkOnline()) return;
-    const perms = [...document.querySelectorAll(".perm-check:checked")].map((input) => input.value);
+    const role = document.getElementById("staff-role").value;
+    const adminAccess = role !== "agent" && !!document.getElementById("staff-admin-access")?.checked;
+    const selectedPerms = [...document.querySelectorAll(".perm-check:checked")].map((input) => input.value);
+    const perms = adminAccess ? cleanPerms([...AGENT_PANEL_PERMISSIONS, "View Dashboard", ...selectedPerms]) : staffPermsForRole(role, false);
     const data = {
       name: document.getElementById("staff-name").value.trim(),
       email: document.getElementById("staff-email").value.trim(),
-      role: document.getElementById("staff-role").value,
-      pin: document.getElementById("staff-pin").value,
+      role,
+      adminAccess,
+      pin: adminAccess ? document.getElementById("staff-pin").value : "",
       shiftId: document.getElementById("staff-shift").value,
       color: document.getElementById("staff-color").value,
       attendanceRequired: document.getElementById("staff-attendance-required").checked,
@@ -3110,7 +3386,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       },
       perms
     };
-    if (!data.name || !data.email || !data.pin) return;
+    if (!data.name || !data.email || (adminAccess && !data.pin)) return;
     const existing = DB.staff.find((staff) => staff.id === S.modal.staffId);
     if (existing) Object.assign(existing, data);
     else DB.staff.push({ id: uid("staff"), ...data });
@@ -3139,12 +3415,35 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function staffRoleChanged(role) {
-    document.querySelectorAll(".perm-check").forEach((input) => { input.checked = (ROLE_DEFAULTS[role] || []).includes(input.value); });
+    const adminBox = document.getElementById("staff-admin-access");
+    const adminRow = document.getElementById("staff-admin-row");
+    const adminPanel = document.getElementById("staff-admin-permissions");
+    const pinWrap = document.getElementById("staff-pin-wrap");
+    const adminAccess = role !== "agent" && (staffDefaultAdminAccess(role) || !!adminBox?.checked);
+    if (adminRow) adminRow.style.display = role === "agent" ? "none" : "";
+    if (adminBox) adminBox.checked = role !== "agent" && adminAccess;
+    if (adminPanel) adminPanel.style.display = adminAccess ? "" : "none";
+    if (pinWrap) pinWrap.style.display = adminAccess ? "" : "none";
+    const pin = document.getElementById("staff-pin");
+    if (pin) pin.required = adminAccess;
+    document.querySelectorAll(".perm-check").forEach((input) => { input.checked = staffPermsForRole(role, adminAccess).includes(input.value); });
     const operational = ["manager", "supervisor", "agent"].includes(role);
     const attendance = document.getElementById("staff-attendance-required");
     const deposits = document.getElementById("staff-show-deposits");
     if (attendance) attendance.checked = operational;
     if (deposits) deposits.checked = operational;
+  }
+
+  function staffAdminAccessChanged() {
+    const role = document.getElementById("staff-role")?.value || "manager";
+    const adminAccess = role !== "agent" && !!document.getElementById("staff-admin-access")?.checked;
+    const adminPanel = document.getElementById("staff-admin-permissions");
+    const pinWrap = document.getElementById("staff-pin-wrap");
+    if (adminPanel) adminPanel.style.display = adminAccess ? "" : "none";
+    if (pinWrap) pinWrap.style.display = adminAccess ? "" : "none";
+    const pin = document.getElementById("staff-pin");
+    if (pin) pin.required = adminAccess;
+    document.querySelectorAll(".perm-check").forEach((input) => { input.checked = staffPermsForRole(role, adminAccess).includes(input.value); });
   }
 
   function staffSelectAll() {
@@ -3156,7 +3455,9 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function staffResetRole() {
-    staffRoleChanged(document.getElementById("staff-role").value);
+    const role = document.getElementById("staff-role").value;
+    const adminAccess = role !== "agent" && !!document.getElementById("staff-admin-access")?.checked;
+    document.querySelectorAll(".perm-check").forEach((input) => { input.checked = staffPermsForRole(role, adminAccess).includes(input.value); });
   }
 
   function saveNewGame() {
@@ -3363,13 +3664,26 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     if (!checkOnline()) return;
     const vendor = DB.payVendors.find((item) => item.id === id);
     if (!vendor) return;
-    const amount = num(prompt("Payment amount received from vendor"));
+    S.modal = { type: "vendorPayment", vendorId: id };
+    render();
+  }
+
+  function saveVendorPayment() {
+    if (!checkOnline()) return;
+    const vendor = DB.payVendors.find((item) => item.id === S.modal?.vendorId);
+    if (!vendor) return;
+    const amount = num(document.getElementById("vendor-payment-amount")?.value);
     if (amount <= 0) return;
+    const date = parseDateInput(document.getElementById("vendor-payment-date")?.value);
+    const time = document.getElementById("vendor-payment-time")?.value || "00:00";
+    const reference = document.getElementById("vendor-payment-ref")?.value.trim() || "";
+    const note = document.getElementById("vendor-payment-note")?.value.trim() || "";
     vendor.payments = Array.isArray(vendor.payments) ? vendor.payments : [];
-    vendor.payments.push({ id: uid("vendor-payment"), amount, at: new Date().toISOString() });
+    vendor.payments.push({ id: uid("vendor-payment"), amount, at: buildDateTime(date, time) || new Date().toISOString(), reference, note });
     syncVendorPaid(vendor);
     saveDB();
     pushConfig();
+    S.modal = null;
     render();
   }
 
@@ -3857,14 +4171,28 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function saveSalesTargets() {
+    saveTargets();
+  }
+
+  function saveTargets() {
     if (!checkOnline()) return;
     DB.salesTargets.monthlySales = num(document.getElementById("target-sales")?.value);
     DB.salesTargets.monthlyNewPlayers = num(document.getElementById("target-players")?.value);
+    combinedPeople().forEach((person) => {
+      const collection = person.source === "agent" ? DB.agents : DB.staff;
+      const record = collection.find((item) => item.id === person.id);
+      if (!record) return;
+      record.targets = {
+        ...(record.targets || {}),
+        deposit: num(document.getElementById(`target-${person.source}-${person.id}-sales`)?.value),
+        newPlayers: num(document.getElementById(`target-${person.source}-${person.id}-players`)?.value)
+      };
+    });
     saveDB();
     pushConfig();
     const msg = document.getElementById("sales-target-save-msg");
     if (msg) {
-      msg.textContent = "Sales targets saved.";
+      msg.textContent = "Targets saved.";
       setTimeout(() => { const node = document.getElementById("sales-target-save-msg"); if (node) node.textContent = ""; }, 2000);
     }
   }
@@ -3878,6 +4206,9 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function redeemLookup() {
+    const id = String(S.rf.gameId || "").trim();
+    const match = id ? allEntries().filter((entry) => entry.gameId === id).sort((a, b) => String(b.createdAt || b.date).localeCompare(String(a.createdAt || a.date)))[0] : null;
+    if (match?.gameName && !S.rf.gameName) S.rf.gameName = match.gameName;
     render();
   }
 
@@ -3887,7 +4218,6 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     S.pf.agent = salesPeople()[0]?.name || "";
     S.ff.agent = salesPeople()[0]?.name || "";
     S.rf.agent = salesPeople()[0]?.name || "";
-    S.pf.pageName = DB.pageNames[0]?.name || "";
     S.pf.gameName = DB.games[0]?.name || "";
     S.ff.gameName = DB.games[0]?.name || "";
     S.rf.gameName = DB.games[0]?.name || "";
@@ -3896,7 +4226,6 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     S.pf.agent = salesPeople()[0]?.name || S.pf.agent;
     S.ff.agent = salesPeople()[0]?.name || S.ff.agent;
     S.rf.agent = salesPeople()[0]?.name || S.rf.agent;
-    S.pf.pageName = DB.pageNames[0]?.name || S.pf.pageName;
     S.pf.gameName = DB.games[0]?.name || S.pf.gameName;
     S.ff.gameName = DB.games[0]?.name || S.ff.gameName;
     S.rf.gameName = DB.games[0]?.name || S.rf.gameName;
@@ -3928,10 +4257,10 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     reviewLeave, editLeaveRequest, deleteLeaveRequest, openCloseShift, closeBalanceInput,
     confirmCloseShift, startNewShift, openModal, closeModal, backdrop, setEntryFilter,
     editEntry, saveEntryEdit, deleteEntry, saveShift, deleteShift, saveAgent, openAgentEdit,
-    deleteAgent, saveStaff, openStaffEdit, deleteStaff, staffRoleChanged, staffSelectAll,
+    deleteAgent, saveStaff, openStaffEdit, deleteStaff, staffRoleChanged, staffAdminAccessChanged, staffSelectAll,
     staffClearAll, staffResetRole, saveNewGame, editGame, cancelGameEdit, saveGameEdit,
     topUpGame, setGameBalance, deleteGame, savePayMethod, addPayTag, deletePayTag,
-    deletePayMethod, addPage, savePageName, editPage, deletePage, savePayVendor, recordVendorPayment, viewVendorPaymentHistory,
+    deletePayMethod, addPage, savePageName, editPage, deletePage, savePayVendor, recordVendorPayment, saveVendorPayment, viewVendorPaymentHistory,
     editVendorPayment, deleteVendorPayment, addVendorDeduction, editVendorDeduction, deleteVendorDeduction, deletePayVendor, addVendorFee,
     updPVFee, editVendorFee, cancelVendorFeeEdit, saveVendorFeeEdit, deleteVendorFee, togglePayTag, addGameVendor, deleteGameVendor, addExpense, deleteExpense,
     addExpenseCategory, deleteExpenseCategory, addScheduledOff, deleteScheduledOff,
@@ -3940,7 +4269,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     clearPlayerLookup, clearPerformance, clearAttendanceFilters, exportEntries, exportExpenses,
     exportPerformance, exportAttendance, exportMonthlyAttendance, exportMonthlyProgress,
     exportJson, loadRestoreFile, restoreBackup, testSupabase, saveSupabase, pushAll,
-    pullAll, autoSyncNow, copySql, saveOverrideCode, saveSalesTargets, copy, renderNow
+    pullAll, autoSyncNow, copySql, saveOverrideCode, saveSalesTargets, saveTargets, copy, renderNow
   };
 
   document.addEventListener("DOMContentLoaded", bootApp);
