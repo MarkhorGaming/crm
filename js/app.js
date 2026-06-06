@@ -2,6 +2,7 @@
   "use strict";
 
   const STORAGE_KEY = "gcrmv5";
+  const ADMIN_SESSION_KEY = "gcrmv5-admin-session";
   const CONFIG_ID = "main_config";
   const SUPABASE_URL = "https://eioindyucvbkvybbevmc.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_VPBm_1F6jl7dBMHJi1jokA_UOdcW6jZ";
@@ -21,6 +22,24 @@
     "Export / Backup", "Manage Agents", "Manage Settings", "Close Shift"
   ];
   const AGENT_PANEL_PERMISSIONS = ["View Entries", "Add Paid Recharge", "Add Freeplay", "Add Redeem"];
+  const ADMIN_SECTION_PERMS = {
+    dashboard: "View Dashboard",
+    transactions: "View Entries",
+    performance: "View Dashboard",
+    targets: "Manage Settings",
+    pnl: "View Dashboard",
+    attendance: "Manage Agents",
+    team: "Manage Agents",
+    staff: "Manage Settings",
+    games: "View Games",
+    payMethods: "Manage Settings",
+    pages: "Manage Settings",
+    vendors: "View Vendors",
+    audit: "Manage Settings",
+    supabase: "Manage Settings",
+    settings: "Manage Settings",
+    backup: "Export / Backup"
+  };
   const ROLE_DEFAULTS = {
     owner: PERMISSIONS.slice(),
     admin: PERMISSIONS.slice(),
@@ -81,7 +100,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   const IDS = {
     shiftMorning: "shift-morning",
-    shiftAfternoon: "shift-afternoon",
+    shiftEvening: "shift-evening",
     shiftNight: "shift-night",
     agentAli: "agent-ali-hassan",
     agentSara: "agent-sara-ahmed",
@@ -125,10 +144,10 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       amber: "#d97706",
       gray: "#64748b",
       gold: "#f59e0b",
-      brandA: "#111827",
-      brandB: "#2563eb",
+      brandA: "#0b0f18",
+      brandB: "#166534",
       brandInk: "#f8fafc",
-      brandAccent: "#38bdf8",
+      brandAccent: "#22c55e",
       gameCard1: "#eff6ff",
       gameCard2: "#f5f3ff",
       gameCard3: "#ecfdf5",
@@ -162,14 +181,236 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       amber: "#fbbf24",
       gray: "#94a3b8",
       gold: "#f59e0b",
-      brandA: "#0f172a",
-      brandB: "#155e75",
+      brandA: "#050816",
+      brandB: "#14532d",
       brandInk: "#e0f2fe",
-      brandAccent: "#fbbf24",
+      brandAccent: "#86efac",
       gameCard1: "#122033",
       gameCard2: "#201a35",
       gameCard3: "#112a24",
       gameCard4: "#2a2111",
+      shadow: "0 18px 44px rgba(0, 0, 0, .35)"
+    },
+    black: {
+      bg: "#050505",
+      bg2: "#0b0b0b",
+      panel: "#101010",
+      panel2: "#181818",
+      panel3: "#242424",
+      input: "#0b0b0b",
+      soft: "#141414",
+      topbar: "rgba(16, 16, 16, .94)",
+      tableHead: "#181818",
+      activeBg: "rgba(250, 204, 21, .14)",
+      successBg: "rgba(34, 197, 94, .13)",
+      dangerBg: "rgba(248, 113, 113, .14)",
+      warnBg: "rgba(250, 204, 21, .15)",
+      line: "#2f2f2f",
+      lineSoft: "rgba(245, 245, 245, .08)",
+      text: "#f5f5f5",
+      muted: "#a3a3a3",
+      muted2: "#737373",
+      primary: "#facc15",
+      primaryDark: "#eab308",
+      purple: "#c084fc",
+      green: "#22c55e",
+      red: "#f87171",
+      amber: "#f59e0b",
+      gray: "#a3a3a3",
+      gold: "#facc15",
+      brandA: "#000000",
+      brandB: "#166534",
+      brandInk: "#f8fafc",
+      brandAccent: "#facc15",
+      gameCard1: "#1f1b0a",
+      gameCard2: "#20142d",
+      gameCard3: "#102017",
+      gameCard4: "#241a08",
+      shadow: "0 18px 44px rgba(0, 0, 0, .48)"
+    },
+    mint: {
+      bg: "#eef7f3",
+      bg2: "#ffffff",
+      panel: "#ffffff",
+      panel2: "#e0f2ea",
+      panel3: "#c8e6d8",
+      input: "#ffffff",
+      soft: "#f8fafc",
+      topbar: "rgba(255, 255, 255, .92)",
+      tableHead: "#ecfdf5",
+      activeBg: "#dcfce7",
+      successBg: "#ecfdf5",
+      dangerBg: "#fff1f2",
+      warnBg: "#fff7ed",
+      line: "#cbded5",
+      lineSoft: "rgba(20, 83, 45, .08)",
+      text: "#172033",
+      muted: "#64748b",
+      muted2: "#94a3b8",
+      primary: "#047857",
+      primaryDark: "#065f46",
+      purple: "#4f46e5",
+      green: "#059669",
+      red: "#e11d48",
+      amber: "#d97706",
+      gray: "#64748b",
+      gold: "#ca8a04",
+      brandA: "#052e2b",
+      brandB: "#15803d",
+      brandInk: "#f8fafc",
+      brandAccent: "#22c55e",
+      gameCard1: "#e0f2fe",
+      gameCard2: "#eef2ff",
+      gameCard3: "#dcfce7",
+      gameCard4: "#fef9c3",
+      shadow: "0 18px 44px rgba(15, 23, 42, .08)"
+    },
+    ocean: {
+      bg: "#eef6fb",
+      bg2: "#ffffff",
+      panel: "#ffffff",
+      panel2: "#e0f2fe",
+      panel3: "#bae6fd",
+      input: "#ffffff",
+      soft: "#f8fafc",
+      topbar: "rgba(255, 255, 255, .92)",
+      tableHead: "#eff6ff",
+      activeBg: "#dbeafe",
+      successBg: "#ecfdf5",
+      dangerBg: "#fff1f2",
+      warnBg: "#fff7ed",
+      line: "#c9ddec",
+      lineSoft: "rgba(8, 47, 73, .08)",
+      text: "#172033",
+      muted: "#64748b",
+      muted2: "#94a3b8",
+      primary: "#0284c7",
+      primaryDark: "#0369a1",
+      purple: "#7c3aed",
+      green: "#0f766e",
+      red: "#e11d48",
+      amber: "#d97706",
+      gray: "#64748b",
+      gold: "#d97706",
+      brandA: "#082f49",
+      brandB: "#0f766e",
+      brandInk: "#f8fafc",
+      brandAccent: "#22c55e",
+      gameCard1: "#dff7ff",
+      gameCard2: "#f3e8ff",
+      gameCard3: "#ccfbf1",
+      gameCard4: "#ffedd5",
+      shadow: "0 18px 44px rgba(15, 23, 42, .08)"
+    },
+    graphite: {
+      bg: "#111111",
+      bg2: "#171717",
+      panel: "#1c1c1c",
+      panel2: "#252525",
+      panel3: "#333333",
+      input: "#141414",
+      soft: "#202020",
+      topbar: "rgba(28, 28, 28, .92)",
+      tableHead: "#202020",
+      activeBg: "rgba(96, 165, 250, .13)",
+      successBg: "rgba(52, 211, 153, .13)",
+      dangerBg: "rgba(251, 113, 133, .13)",
+      warnBg: "rgba(251, 191, 36, .14)",
+      line: "#3a3a3a",
+      lineSoft: "rgba(229, 237, 247, .08)",
+      text: "#e5edf7",
+      muted: "#a3a3a3",
+      muted2: "#737373",
+      primary: "#60a5fa",
+      primaryDark: "#3b82f6",
+      purple: "#f472b6",
+      green: "#34d399",
+      red: "#fb7185",
+      amber: "#fbbf24",
+      gray: "#94a3b8",
+      gold: "#fbbf24",
+      brandA: "#0a0a0a",
+      brandB: "#1d4ed8",
+      brandInk: "#e0f2fe",
+      brandAccent: "#86efac",
+      gameCard1: "#172133",
+      gameCard2: "#2b1b2b",
+      gameCard3: "#122a22",
+      gameCard4: "#2a2211",
+      shadow: "0 18px 44px rgba(0, 0, 0, .35)"
+    },
+    rose: {
+      bg: "#fbf5f8",
+      bg2: "#ffffff",
+      panel: "#ffffff",
+      panel2: "#fce7f3",
+      panel3: "#fbcfe8",
+      input: "#ffffff",
+      soft: "#fff7fb",
+      topbar: "rgba(255, 255, 255, .92)",
+      tableHead: "#fff1f2",
+      activeBg: "#fdf2f8",
+      successBg: "#ecfdf5",
+      dangerBg: "#fff1f2",
+      warnBg: "#fff7ed",
+      line: "#e9cdd8",
+      lineSoft: "rgba(76, 5, 25, .08)",
+      text: "#172033",
+      muted: "#64748b",
+      muted2: "#94a3b8",
+      primary: "#be123c",
+      primaryDark: "#9f1239",
+      purple: "#6d28d9",
+      green: "#047857",
+      red: "#e11d48",
+      amber: "#d97706",
+      gray: "#64748b",
+      gold: "#b45309",
+      brandA: "#4c0519",
+      brandB: "#166534",
+      brandInk: "#f8fafc",
+      brandAccent: "#22c55e",
+      gameCard1: "#ffe4e6",
+      gameCard2: "#ede9fe",
+      gameCard3: "#dcfce7",
+      gameCard4: "#fef3c7",
+      shadow: "0 18px 44px rgba(15, 23, 42, .08)"
+    },
+    royal: {
+      bg: "#100f1f",
+      bg2: "#16142a",
+      panel: "#1b1833",
+      panel2: "#242044",
+      panel3: "#312b5f",
+      input: "#121225",
+      soft: "#201c3a",
+      topbar: "rgba(27, 24, 51, .92)",
+      tableHead: "#201c3a",
+      activeBg: "rgba(129, 140, 248, .14)",
+      successBg: "rgba(45, 212, 191, .13)",
+      dangerBg: "rgba(251, 113, 133, .13)",
+      warnBg: "rgba(251, 191, 36, .14)",
+      line: "#3a3564",
+      lineSoft: "rgba(226, 232, 240, .08)",
+      text: "#e5edf7",
+      muted: "#b3aec9",
+      muted2: "#837c9f",
+      primary: "#818cf8",
+      primaryDark: "#6366f1",
+      purple: "#e879f9",
+      green: "#2dd4bf",
+      red: "#fb7185",
+      amber: "#fbbf24",
+      gray: "#94a3b8",
+      gold: "#fbbf24",
+      brandA: "#0f1028",
+      brandB: "#155e75",
+      brandInk: "#e0f2fe",
+      brandAccent: "#86efac",
+      gameCard1: "#1d2750",
+      gameCard2: "#371f4b",
+      gameCard3: "#123833",
+      gameCard4: "#342812",
       shadow: "0 18px 44px rgba(0, 0, 0, .35)"
     }
   };
@@ -180,13 +421,13 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     panel2: "#e8eef6",
     input: "#ffffff",
     soft: "#f8fafc",
-    primary: "#0f766e",
-    primaryDark: "#0d9488",
+    primary: "#15803d",
+    primaryDark: "#166534",
     purple: "#6d28d9",
     gold: "#d97706",
-    brandA: "#0f172a",
-    brandB: "#0f766e",
-    brandAccent: "#f59e0b",
+    brandA: "#0b0f18",
+    brandB: "#166534",
+    brandAccent: "#22c55e",
     gameCard1: "#ecfeff",
     gameCard2: "#f5f3ff",
     gameCard3: "#ecfdf5",
@@ -233,16 +474,28 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   let DB = null;
   let S = null;
   let IS_ONLINE = navigator.onLine;
+  let SUPABASE_READY = false;
   let syncQueue = [];
   let syncBusy = false;
+  let sheetSyncBusy = false;
   let autoPullTimer = null;
   let clockTimer = null;
   let restoreFileText = "";
   let lastSavedStatus = "";
+  let lastSheetStatus = "";
 
   const app = document.getElementById("app");
   const boot = document.getElementById("boot");
   const bootStatus = document.getElementById("bootStatus");
+  const PORTAL_MODE = document.body?.dataset?.portal || "all";
+
+  function isAgentPortal() {
+    return PORTAL_MODE === "agent";
+  }
+
+  function isAdminPortal() {
+    return PORTAL_MODE === "admin";
+  }
 
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
@@ -305,6 +558,31 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     return days;
   }
 
+  function minutesForTime(value) {
+    const match = String(value || "").match(/^(\d{2}):(\d{2})$/);
+    if (!match) return 0;
+    return Number(match[1]) * 60 + Number(match[2]);
+  }
+
+  function shiftDurationLabel(shift) {
+    const start = minutesForTime(shift?.start);
+    const end = minutesForTime(shift?.end);
+    let mins = end - start;
+    if (mins <= 0) mins += 24 * 60;
+    const hours = Math.floor(mins / 60);
+    const rem = mins % 60;
+    return rem ? `${hours}h ${rem}m` : `${hours}h`;
+  }
+
+  function timeOptions() {
+    const options = [];
+    for (let mins = 0; mins < 24 * 60; mins += 30) {
+      const value = `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}`;
+      options.push([value, value]);
+    }
+    return options;
+  }
+
   function esc(value) {
     return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
       "&": "&amp;",
@@ -320,6 +598,10 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     return Number.isFinite(n) ? n : 0;
   }
 
+  function isWholeNumber(value) {
+    return Number.isInteger(num(value));
+  }
+
   function fmt$(value) {
     return `$${num(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
@@ -330,6 +612,14 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function fmtPlain(value) {
     return num(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
+
+  function fmtTimer(totalSeconds) {
+    const seconds = Math.max(0, Math.floor(num(totalSeconds)));
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return h ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
   }
 
   function uniqueList(values) {
@@ -348,6 +638,11 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function cleanPerms(perms) {
     return uniqueList(perms || []).filter((perm) => PERMISSIONS.includes(perm));
+  }
+
+  function agentRoleOptions() {
+    const roles = uniqueList([...(DB?.agentRoles || []), ...(DB?.agents?.map((agent) => agent.role) || [])]);
+    return (roles.length ? roles : ["agent"]).map((role) => [role, roleName(role)]);
   }
 
   function cleanReason(value, key) {
@@ -416,6 +711,20 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     URL.revokeObjectURL(url);
   }
 
+  function excelCell(value) {
+    return `<td>${esc(value)}</td>`;
+  }
+
+  function downloadExcelTable(filename, headings, rows) {
+    const html = `<!doctype html><html><head><meta charset="utf-8"></head><body>
+      <table>
+        <thead><tr>${headings.map((heading) => `<th>${esc(heading)}</th>`).join("")}</tr></thead>
+        <tbody>${rows.map((row) => `<tr>${row.map(excelCell).join("")}</tr>`).join("")}</tbody>
+      </table>
+    </body></html>`;
+    downloadTextFile(filename, html, "application/vnd.ms-excel;charset=utf-8");
+  }
+
   function copyText(value) {
     const text = String(value || "");
     if (navigator.clipboard && window.isSecureContext) {
@@ -442,7 +751,9 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function normalizeTheme(theme) {
     const input = theme && typeof theme === "object" ? theme : {};
-    const mode = ["white", "dark", "custom"].includes(input.mode) ? input.mode : input.mode === "light" ? "white" : "white";
+    const allowed = new Set([...Object.keys(THEME_PRESETS), "custom"]);
+    const savedMode = String(input.mode || "").startsWith("saved:") ? String(input.mode) : "";
+    const mode = savedMode || (allowed.has(input.mode) ? input.mode : input.mode === "light" ? "white" : "white");
     return { mode, custom: { ...THEME_CUSTOM_DEFAULTS, ...(input.custom || {}) } };
   }
 
@@ -468,7 +779,11 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function currentThemeValues() {
     const theme = normalizeTheme(DB?.theme);
-    if (theme.mode === "dark") return { ...THEME_PRESETS.dark };
+    if (theme.mode.startsWith("saved:")) {
+      const saved = DB?.savedThemes?.find((item) => `saved:${item.id}` === theme.mode);
+      if (saved?.values) return { ...THEME_CUSTOM_DEFAULTS, ...saved.values };
+    }
+    if (THEME_PRESETS[theme.mode]) return { ...THEME_PRESETS[theme.mode] };
     if (theme.mode === "custom") return { ...THEME_CUSTOM_DEFAULTS, ...theme.custom };
     return { ...THEME_PRESETS.white };
   }
@@ -479,7 +794,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const values = currentThemeValues();
     const root = document.documentElement;
     root.dataset.theme = DB.theme.mode;
-    root.style.colorScheme = DB.theme.mode === "dark" || (DB.theme.mode === "custom" && isDarkColor(values.bg)) ? "dark" : "light";
+    root.style.colorScheme = isDarkColor(values.bg) ? "dark" : "light";
     Object.entries(THEME_VAR_MAP).forEach(([key, cssVar]) => {
       if (values[key]) root.style.setProperty(cssVar, values[key]);
     });
@@ -491,7 +806,18 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function themeOptions() {
-    return [["white", "White"], ["dark", "Dark"], ["custom", "Custom"]];
+    const presets = [
+      ["white", "White"],
+      ["dark", "Dark"],
+      ["black", "Black"],
+      ["mint", "Mint"],
+      ["ocean", "Ocean"],
+      ["graphite", "Graphite"],
+      ["rose", "Rose"],
+      ["royal", "Royal"]
+    ];
+    const saved = (DB?.savedThemes || []).map((theme) => [`saved:${theme.id}`, theme.name]);
+    return [...presets, ...saved, ["custom", "Custom"]];
   }
 
   function themeQuickSelect() {
@@ -549,7 +875,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function setThemeMode(mode) {
     DB.theme = normalizeTheme(DB.theme);
-    DB.theme.mode = ["white", "dark", "custom"].includes(mode) ? mode : "white";
+    const validModes = themeOptions().map((item) => item[0]);
+    DB.theme.mode = validModes.includes(mode) ? mode : "white";
     saveDB();
     applyTheme();
     pushConfig();
@@ -568,8 +895,20 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function saveTheme() {
     DB.theme = normalizeTheme(DB.theme);
     const mode = document.getElementById("theme-mode")?.value || DB.theme.mode;
-    DB.theme.mode = ["white", "dark", "custom"].includes(mode) ? mode : "white";
-    if (DB.theme.mode === "custom") DB.theme.custom = readCustomThemeInputs();
+    const validModes = themeOptions().map((item) => item[0]);
+    DB.theme.mode = validModes.includes(mode) ? mode : "white";
+    if (DB.theme.mode === "custom") {
+      DB.theme.custom = readCustomThemeInputs();
+      const name = document.getElementById("theme-name")?.value.trim();
+      if (name) {
+        DB.savedThemes = Array.isArray(DB.savedThemes) ? DB.savedThemes : [];
+        const existing = DB.savedThemes.find((item) => item.name.toLowerCase() === name.toLowerCase());
+        if (existing) existing.values = clone(DB.theme.custom);
+        else DB.savedThemes.push({ id: uid("theme"), name, values: clone(DB.theme.custom) });
+        const saved = DB.savedThemes.find((item) => item.name.toLowerCase() === name.toLowerCase());
+        if (saved) DB.theme.mode = `saved:${saved.id}`;
+      }
+    }
     saveDB();
     applyTheme();
     pushConfig();
@@ -590,24 +929,25 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function createDefaultDB() {
     const payMethods = [
-      { id: IDS.cashApp, name: "Cash App", tags: [{ id: "tag-cash-main", tag: "$TeamMarkhor" }, { id: "tag-cash-backup", tag: "$MarkhorPay" }] },
-      { id: IDS.zelle, name: "Zelle", tags: [{ id: "tag-zelle-main", tag: "payments@teammarkhor.com" }] },
-      { id: IDS.venmo, name: "Venmo", tags: [{ id: "tag-venmo-main", tag: "@TeamMarkhor" }] }
+      { id: IDS.cashApp, name: "Cash App", tags: [{ id: "tag-cash-main", tag: "$PandaSquad" }, { id: "tag-cash-backup", tag: "$PandaPay" }] },
+      { id: IDS.zelle, name: "Zelle", tags: [{ id: "tag-zelle-main", tag: "payments@pandasquad.com" }] },
+      { id: IDS.venmo, name: "Venmo", tags: [{ id: "tag-venmo-main", tag: "@PandaSquad" }] }
     ];
     return {
       shifts: [
-        { id: IDS.shiftMorning, name: "Morning", start: "06:00", end: "14:00" },
-        { id: IDS.shiftAfternoon, name: "Afternoon", start: "14:00", end: "22:00" },
-        { id: IDS.shiftNight, name: "Night", start: "22:00", end: "06:00" }
+        { id: IDS.shiftNight, name: "Night", start: "00:00", end: "08:00" },
+        { id: IDS.shiftMorning, name: "Morning", start: "08:00", end: "16:00" },
+        { id: IDS.shiftEvening, name: "Evening", start: "16:00", end: "00:00" }
       ],
       agents: [
         { id: IDS.agentAli, name: "Ali Hassan", role: "agent", shiftId: IDS.shiftMorning, color: "#24d8ff", attendanceRequired: true, showInDeposits: true, targets: { newPlayers: 0, deposit: 0 } },
-        { id: IDS.agentSara, name: "Sara Ahmed", role: "agent", shiftId: IDS.shiftAfternoon, color: "#a673ff", attendanceRequired: true, showInDeposits: true, targets: { newPlayers: 0, deposit: 0 } },
+        { id: IDS.agentSara, name: "Sara Ahmed", role: "agent", shiftId: IDS.shiftEvening, color: "#a673ff", attendanceRequired: true, showInDeposits: true, targets: { newPlayers: 0, deposit: 0 } },
         { id: IDS.agentUsman, name: "Usman Malik", role: "agent", shiftId: IDS.shiftNight, color: "#32d583", attendanceRequired: true, showInDeposits: true, targets: { newPlayers: 0, deposit: 0 } }
       ],
+      agentRoles: ["agent", "manager", "supervisor"],
       staff: [],
       payMethods,
-      pageNames: [{ id: "page-main", name: "Team Markhor Main", link: "", accessTo: "" }],
+      pageNames: [{ id: "page-main", name: "Panda Squad Main", link: "", accessTo: "" }],
       games: [
         { id: IDS.gameFish, name: "Fish Table", backendLoaded: 5000, pricePer1k: 0, backendLink: "", playerLink: "", username: "", password: "", gameVendorId: "", reloadHistory: [] },
         { id: IDS.gameJuwa, name: "Juwa", backendLoaded: 8000, pricePer1k: 0, backendLink: "", playerLink: "", username: "", password: "", gameVendorId: IDS.gameVendorJuwa, reloadHistory: [] },
@@ -617,16 +957,21 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         {
           id: IDS.vendorFastPay,
           name: "FastPay Co",
+          contactPerson: "",
+          phone: "",
+          email: "",
+          hasWhatsappGroup: false,
+          groupName: "",
           notes: "",
           fees: [
-            { id: "fee-cash-app", payMethodId: IDS.cashApp, fee: 20, payTag: "$TeamMarkhor" },
-            { id: "fee-zelle", payMethodId: IDS.zelle, fee: 30, payTag: "payments@teammarkhor.com" }
+            { id: "fee-cash-app", payMethodId: IDS.cashApp, fee: 20, payTag: "$PandaSquad" },
+            { id: "fee-zelle", payMethodId: IDS.zelle, fee: 30, payTag: "payments@pandasquad.com" }
           ]
         }
       ],
       gameVendors: [
-        { id: IDS.gameVendorJuwa, name: "Juwa Vendor", notes: "" },
-        { id: IDS.gameVendorOrion, name: "Orion Vendor", notes: "" }
+        { id: IDS.gameVendorJuwa, name: "Juwa Vendor", contactPerson: "", phone: "", email: "", hasWhatsappGroup: false, groupName: "", notes: "" },
+        { id: IDS.gameVendorOrion, name: "Orion Vendor", contactPerson: "", phone: "", email: "", hasWhatsappGroup: false, groupName: "", notes: "" }
       ],
       expCats: [
         { id: "exp-payroll", name: "Payroll" },
@@ -638,6 +983,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       expenses: [],
       entries: [],
       closedShifts: [],
+      auditLogs: [],
       attendance: [],
       leaveRequests: [],
       scheduledOff: [],
@@ -647,15 +993,22 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         lateGraceMinutes: 15
       },
       salesTargets: { monthlySales: 0, monthlyNewPlayers: 0 },
+      savedThemes: [],
       theme: defaultTheme(),
       shiftStart: new Date().toISOString(),
       shiftOpen: true,
       activeShiftName: shiftNameForNow([
-        { name: "Morning", start: "06:00", end: "14:00" },
-        { name: "Afternoon", start: "14:00", end: "22:00" },
-        { name: "Night", start: "22:00", end: "06:00" }
+        { name: "Night", start: "00:00", end: "08:00" },
+        { name: "Morning", start: "08:00", end: "16:00" },
+        { name: "Evening", start: "16:00", end: "00:00" }
       ]),
       supabase: { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY, enabled: true },
+      googleSheets: {
+        enabled: false,
+        webAppUrl: "",
+        token: "",
+        pending: []
+      },
       overrideCode: "1234"
     };
   }
@@ -666,10 +1019,31 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     [
       "shifts", "agents", "staff", "payMethods", "pageNames", "games", "payVendors",
       "gameVendors", "expCats", "expenses", "entries", "closedShifts", "attendance",
-      "leaveRequests", "scheduledOff"
+      "leaveRequests", "scheduledOff", "agentRoles", "savedThemes", "auditLogs"
     ].forEach((key) => {
       if (!Array.isArray(db[key])) db[key] = clone(base[key]);
     });
+    db.agentRoles = uniqueList(db.agentRoles.map((role) => String(role || "").trim().toLowerCase()).filter(Boolean));
+    if (!db.agentRoles.length) db.agentRoles = clone(base.agentRoles);
+    const legacyDefaultShifts = db.shifts.length === 3
+      && db.shifts.some((shift) => shift.id === "shift-afternoon" && shift.name === "Afternoon" && shift.start === "14:00" && shift.end === "22:00")
+      && db.shifts.some((shift) => shift.name === "Morning" && shift.start === "06:00" && shift.end === "14:00")
+      && db.shifts.some((shift) => shift.name === "Night" && shift.start === "22:00" && shift.end === "06:00");
+    if (legacyDefaultShifts) {
+      db.shifts = clone(base.shifts);
+      db.activeShiftName = shiftNameForNow(db.shifts);
+      db.agents = db.agents.map((agent) => ({
+        ...agent,
+        shiftId: agent.shiftId === "shift-afternoon" ? IDS.shiftEvening : agent.shiftId,
+        shiftHistory: (agent.shiftHistory || []).map((item) => ({ ...item, shiftId: item.shiftId === "shift-afternoon" ? IDS.shiftEvening : item.shiftId }))
+      }));
+      db.staff = db.staff.map((staff) => ({
+        ...staff,
+        shiftId: staff.shiftId === "shift-afternoon" ? IDS.shiftEvening : staff.shiftId,
+        shiftHistory: (staff.shiftHistory || []).map((item) => ({ ...item, shiftId: item.shiftId === "shift-afternoon" ? IDS.shiftEvening : item.shiftId }))
+      }));
+    }
+    db.savedThemes = db.savedThemes.map((theme) => ({ id: theme.id || uid("theme"), name: String(theme.name || "Custom Theme").trim(), values: { ...THEME_CUSTOM_DEFAULTS, ...(theme.values || {}) } }));
     db.attendance = db.attendance.map((record) => ({
       ...record,
       leaveReason: cleanReason(record.leaveReason, "leaveReason"),
@@ -681,6 +1055,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       color: ["#24d8ff", "#a673ff", "#32d583", "#ffbf4d"][index % 4],
       attendanceRequired: true,
       showInDeposits: true,
+      breakAllowedMins: 30,
       targets: { newPlayers: 0, deposit: 0 },
       ...agent
     })).map((agent) => {
@@ -702,11 +1077,12 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         adminAccess,
         attendanceRequired: operational,
         showInDeposits: operational,
+        breakAllowedMins: 30,
         targets: { newPlayers: 0, deposit: 0 },
         perms: staffPermsForRole(role, adminAccess),
         ...staff,
         adminAccess,
-        perms: staff.perms ? cleanPerms([...AGENT_PANEL_PERMISSIONS, ...(adminAccess ? ["View Dashboard", ...staff.perms] : [])]) : staffPermsForRole(role, adminAccess),
+        perms: staff.perms ? cleanPerms(staff.perms) : staffPermsForRole(role, adminAccess),
         targets: { newPlayers: 0, deposit: 0, ...(staff.targets || {}) }
       };
     });
@@ -715,7 +1091,14 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     db.payMethods = db.payMethods.map((method) => ({ tags: [], ...method, tags: (method.tags || []).map((tag) => ({ active: true, archivedAt: "", ...tag })) }));
     db.payVendors = db.payVendors.map((vendor) => ({
       fees: [],
+      contactPerson: "",
+      phone: "",
+      email: "",
+      hasWhatsappGroup: false,
+      groupName: "",
       notes: "",
+      archived: false,
+      archivedAt: "",
       paid: 0,
       payments: [],
       deductions: [],
@@ -723,8 +1106,22 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       payments: Array.isArray(vendor.payments) ? vendor.payments : [],
       deductions: Array.isArray(vendor.deductions) ? vendor.deductions : []
     }));
-    db.gameVendors = db.gameVendors.map((vendor) => ({ notes: "", ...vendor }));
+    db.gameVendors = db.gameVendors.map((vendor) => ({ contactPerson: "", phone: "", email: "", hasWhatsappGroup: false, groupName: "", notes: "", ...vendor }));
     db.supabase = { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY, enabled: true, ...(db.supabase || {}) };
+    db.googleSheets = {
+      enabled: false,
+      webAppUrl: "",
+      token: "",
+      pending: [],
+      ...(db.googleSheets || {})
+    };
+    if (!Array.isArray(db.googleSheets.pending)) db.googleSheets.pending = [];
+    if (String(db.googleSheets.webAppUrl || "").includes("script.google.com/macros/s/") && String(db.googleSheets.token || "").startsWith("PS-GOOGLE-BACKUP-")) {
+      db.googleSheets.enabled = false;
+      db.googleSheets.webAppUrl = "";
+      db.googleSheets.token = "";
+      db.googleSheets.pending = [];
+    }
     db.attendanceSettings = {
       leaveReasons: ["Sick Leave", "Urgent Work", "Personal Leave"],
       offReasons: ["Uninformed", "Sick Leave", "Custom"],
@@ -732,6 +1129,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       ...(db.attendanceSettings || {})
     };
     db.salesTargets = { monthlySales: 0, monthlyNewPlayers: 0, ...(db.salesTargets || {}) };
+    db.auditLogs = db.auditLogs.map((log) => ({ id: log.id || uid("audit"), at: log.at || new Date().toISOString(), actor: log.actor || "", action: log.action || "", target: log.target || "", note: log.note || "", before: log.before || null, after: log.after || null }));
     if (db.salesTargets.monthlySales === 0 && db.salesTargets.monthlyDeposit) db.salesTargets.monthlySales = num(db.salesTargets.monthlyDeposit);
     db.theme = normalizeTheme(db.theme);
     if (!db.shiftStart) db.shiftStart = new Date().toISOString();
@@ -742,15 +1140,40 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function loadDB() {
-    try {
-      return normalizeDB(JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"));
-    } catch {
-      return createDefaultDB();
-    }
+    return createDefaultDB();
   }
 
   function saveDB() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DB));
+    // Supabase is the source of truth. Do not persist CRM data in browser storage.
+  }
+
+  function saveAdminSession() {
+    try {
+      if (S?.adminAuthed && S.adminUserId) localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify({ userId: S.adminUserId }));
+      else localStorage.removeItem(ADMIN_SESSION_KEY);
+    } catch {
+      // Admin session persistence is optional.
+    }
+  }
+
+  function restoreAdminSession() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(ADMIN_SESSION_KEY) || "{}");
+      if (saved.userId && DB.staff.some((staff) => staff.id === saved.userId && staff.adminAccess)) {
+        S.adminAuthed = true;
+        S.adminUserId = saved.userId;
+      }
+    } catch {
+      // Ignore broken browser session data.
+    }
+  }
+
+  function clearBrowserDB() {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // Browser storage may be unavailable; the CRM no longer relies on it.
+    }
   }
 
   function createState() {
@@ -763,6 +1186,9 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       vendorSection: "payment",
       payMethodSection: "active",
       txPlayerLookup: "",
+      playerLookupCode: "",
+      selectedPayVendorId: "",
+      selectedGameVendorId: "",
       editVendorFeeId: "",
       month: monthKey(),
       pnlMonth: monthKey(),
@@ -788,6 +1214,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       pf: newPF(),
       ff: newFF(),
       rf: newRF(),
+      referral: newReferralForm(),
       _pendingEntry: null
     };
   }
@@ -797,6 +1224,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       date: todayISO(),
       shift: activeShiftName(),
       agent: "",
+      playerCode: "",
       playerName: "",
       playerUrl: "",
       deposit: "",
@@ -814,7 +1242,10 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       salesName: "",
       legalName: "",
       contact: "",
-      email: ""
+      email: "",
+      referralForCode: "",
+      referredByCode: "",
+      referralNote: ""
     };
   }
 
@@ -823,15 +1254,22 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       date: todayISO(),
       shift: activeShiftName(),
       agent: "",
+      playerCode: "",
       playerName: "",
       playerUrl: "",
       fpAmount: "",
       gameName: "",
       gameId: "",
+      depositOnPage: true,
+      pageName: "",
+      huntingProfile: "",
       salesName: "",
       legalName: "",
       contact: "",
-      email: ""
+      email: "",
+      referralForCode: "",
+      referredByCode: "",
+      referralNote: ""
     };
   }
 
@@ -840,6 +1278,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       date: todayISO(),
       shift: activeShiftName(),
       agent: "",
+      playerCode: "",
       gameId: "",
       gameName: "",
       rdCredits: "",
@@ -847,11 +1286,29 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     };
   }
 
+  function newReferralForm() {
+    return {
+      date: todayISO(),
+      shift: activeShiftName(),
+      agent: "",
+      referrerType: "customer",
+      referredByCode: "",
+      referredPlayerCode: "",
+      referrerName: "",
+      referrerUrl: "",
+      referrerContact: "",
+      gameId: "",
+      gameName: "",
+      coins: "",
+      note: ""
+    };
+  }
+
   function shiftNameForNow(shifts) {
     const list = Array.isArray(shifts) && shifts.length ? shifts : [
-      { name: "Morning", start: "06:00", end: "14:00" },
-      { name: "Afternoon", start: "14:00", end: "22:00" },
-      { name: "Night", start: "22:00", end: "06:00" }
+      { name: "Night", start: "00:00", end: "08:00" },
+      { name: "Morning", start: "08:00", end: "16:00" },
+      { name: "Evening", start: "16:00", end: "00:00" }
     ];
     const d = new Date();
     const current = d.getHours() * 60 + d.getMinutes();
@@ -867,6 +1324,23 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function getCurrentShiftName() {
     return shiftNameForNow(DB?.shifts);
+  }
+
+  function shiftContainsNow(name) {
+    const shift = DB?.shifts?.find((item) => item.name === name);
+    if (!shift) return name === getCurrentShiftName();
+    const current = new Date().getHours() * 60 + new Date().getMinutes();
+    const start = minutesForTime(shift.start);
+    const end = minutesForTime(shift.end);
+    return start <= end ? current >= start && current < end : current >= start || current < end;
+  }
+
+  function nextShiftNameAfter(name) {
+    const shifts = Array.isArray(DB?.shifts) && DB.shifts.length ? DB.shifts : [];
+    if (!shifts.length) return getCurrentShiftName();
+    const index = shifts.findIndex((shift) => shift.name === name);
+    if (index < 0) return getCurrentShiftName();
+    return shifts[(index + 1) % shifts.length]?.name || getCurrentShiftName();
   }
 
   function activeShiftName() {
@@ -897,14 +1371,14 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       const key = agent.name.toLowerCase();
       if (!seen.has(key)) {
         seen.add(key);
-        people.push({ id: agent.id, name: agent.name, role: agent.role || "agent", shiftId: agent.shiftId, color: agent.color || "#24d8ff", attendanceRequired: agent.attendanceRequired !== false, showInDeposits: agent.showInDeposits !== false, targets: agent.targets || { newPlayers: 0, deposit: 0 }, source: "agent" });
+        people.push({ id: agent.id, name: agent.name, role: agent.role || "agent", shiftId: agent.shiftId, shiftHistory: agent.shiftHistory || [], color: agent.color || "#24d8ff", attendanceRequired: agent.attendanceRequired !== false, showInDeposits: agent.showInDeposits !== false, targets: agent.targets || { newPlayers: 0, deposit: 0 }, source: "agent" });
       }
     });
     DB.staff.forEach((staff) => {
       const key = staff.name.toLowerCase();
       if (!seen.has(key)) {
         seen.add(key);
-        people.push({ id: staff.id, name: staff.name, role: staff.role || "staff", shiftId: staff.shiftId || "", color: staff.color || "#8796a3", attendanceRequired: !!staff.attendanceRequired, showInDeposits: !!staff.showInDeposits, targets: staff.targets || { newPlayers: 0, deposit: 0 }, source: "staff" });
+        people.push({ id: staff.id, name: staff.name, role: staff.role || "staff", shiftId: staff.shiftId || "", shiftHistory: staff.shiftHistory || [], color: staff.color || "#8796a3", attendanceRequired: !!staff.attendanceRequired, showInDeposits: !!staff.showInDeposits, targets: staff.targets || { newPlayers: 0, deposit: 0 }, source: "staff" });
       }
     });
     return people;
@@ -922,6 +1396,42 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     return combinedPeople().find((person) => person.id === id);
   }
 
+  function shiftForPersonOnDate(person, date) {
+    if (!person) return DB.shifts[0];
+    const history = (person.shiftHistory || [])
+      .filter((item) => item.date && item.shiftId && item.date <= date)
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    return shiftById(history[0]?.shiftId || person.shiftId) || DB.shifts[0];
+  }
+
+  function addDaysISO(date, days) {
+    const d = new Date(`${date}T00:00:00`);
+    d.setDate(d.getDate() + days);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  function attendanceDateForPerson(person, value = new Date()) {
+    const d = value instanceof Date ? value : new Date(value);
+    const todayKey = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const prevKey = addDaysISO(todayKey, -1);
+    const prevShift = shiftForPersonOnDate(person, prevKey);
+    if (prevShift) {
+      const [sh, sm] = prevShift.start.split(":").map(Number);
+      const [eh, em] = prevShift.end.split(":").map(Number);
+      const start = sh * 60 + sm;
+      const end = eh * 60 + em;
+      const current = d.getHours() * 60 + d.getMinutes();
+      if (start > end && current < end) return prevKey;
+    }
+    return todayKey;
+  }
+
+  function shiftEffectivePrompt(name) {
+    const value = prompt(`When should this shift change take effect for ${name}?\n\nUse YYYY-MM-DD. Leave as today for immediate effect.`, todayISO());
+    if (value === null) return null;
+    return parseDateInput(value || todayISO());
+  }
+
   function getAttendance(personId, date) {
     return DB.attendance.find((record) => record.agentId === personId && record.date === date);
   }
@@ -930,11 +1440,14 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const person = personById(personId);
     let record = getAttendance(personId, date);
     if (!record) {
+      const shift = shiftForPersonOnDate(person, date);
       record = {
         id: uid("attendance"),
         agentId: personId,
         agentName: person?.name || "",
         date,
+        shiftId: shift?.id || "",
+        shiftName: shift?.name || "",
         checkIn: "",
         checkInAt: "",
         checkOut: "",
@@ -953,11 +1466,12 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function isLateForPerson(person, dateTimeValue) {
     if (!person || !dateTimeValue) return false;
-    const shift = shiftById(person.shiftId) || DB.shifts[0];
-    if (!shift) return false;
     const d = new Date(dateTimeValue);
+    const dateKey = attendanceDateForPerson(person, d);
+    const shift = shiftForPersonOnDate(person, dateKey);
+    if (!shift) return false;
     const [h, m] = shift.start.split(":").map(Number);
-    const start = new Date(d);
+    const start = new Date(`${dateKey}T00:00:00`);
     start.setHours(h, m + num(DB.attendanceSettings.lateGraceMinutes), 0, 0);
     return d.getTime() > start.getTime();
   }
@@ -988,9 +1502,10 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const entries = allEntries().filter((entry) => entry.gameId === game.id || entry.gameName === game.name);
     const paid = entries.filter((entry) => entry.type === "paid").reduce((sum, entry) => sum + num(entry.recharge), 0);
     const freeplay = entries.filter((entry) => entry.type === "freeplay").reduce((sum, entry) => sum + num(entry.fpAmount), 0);
+    const referral = entries.filter((entry) => entry.type === "referral").reduce((sum, entry) => sum + num(entry.fpAmount), 0);
     const redeem = entries.filter((entry) => entry.type === "redeem").reduce((sum, entry) => sum + num(entry.rdCredits), 0);
-    const used = paid + freeplay;
-    return { paid, freeplay, used, redeem, current: num(game.backendLoaded) - used + redeem };
+    const used = paid + freeplay + referral;
+    return { paid, freeplay, referral, used, redeem, current: num(game.backendLoaded) - used + redeem };
   }
 
   function gameBal(gameId) {
@@ -1019,6 +1534,90 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     };
   }
 
+  function normalizePlayerCode(value) {
+    const raw = String(value || "").trim().toUpperCase();
+    if (!raw) return "";
+    const digits = raw.match(/\d+/)?.[0];
+    if (digits && (/^\d+$/.test(raw) || /^P?S?-?\d+$/i.test(raw))) return `PS-${String(Number(digits)).padStart(6, "0")}`;
+    return raw;
+  }
+
+  function nextPlayerCode() {
+    const existing = new Set(allEntries().map((entry) => normalizePlayerCode(entry.playerCode)).filter(Boolean));
+    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "";
+    do {
+      code = `PS-${Array.from({ length: 6 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("")}`;
+    } while (existing.has(code));
+    return code;
+  }
+
+  function playerIdentity(entry) {
+    const values = [entry.playerCode, entry.gameId, entry.playerUrl, entry.contact, entry.email, entry.legalName, entry.playerName];
+    return values.map((value) => String(value || "").trim().toLowerCase()).filter(Boolean);
+  }
+
+  function relatedPlayerEntries(seed) {
+    const keys = new Set(playerIdentity(seed));
+    if (!keys.size) return [];
+    return allEntries().filter((entry) => playerIdentity(entry).some((key) => keys.has(key)));
+  }
+
+  function lastEntryForPlayerCode(code) {
+    const normalized = normalizePlayerCode(code);
+    if (!normalized) return null;
+    return allEntries()
+      .filter((entry) => normalizePlayerCode(entry.playerCode) === normalized)
+      .sort((a, b) => String(b.createdAt || b.date).localeCompare(String(a.createdAt || a.date)))[0] || null;
+  }
+
+  function ensurePlayerCode(entry) {
+    entry.playerCode = normalizePlayerCode(entry.playerCode);
+    if (entry.playerCode) return entry.playerCode;
+    if (entry.type === "referral") return "";
+    const existing = relatedPlayerEntries(entry).find((item) => item.playerCode);
+    entry.playerCode = existing?.playerCode || nextPlayerCode();
+    return entry.playerCode;
+  }
+
+  function assignMissingPlayerCodes(db) {
+    const entries = [
+      ...(db.entries || []),
+      ...(db.closedShifts || []).flatMap((shift) => shift.entries || [])
+    ];
+    const usedCodes = new Set(entries.map((entry) => normalizePlayerCode(entry.playerCode)).filter(Boolean));
+    const randomCode = () => {
+      const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let code = "";
+      do {
+        code = `PS-${Array.from({ length: 6 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("")}`;
+      } while (usedCodes.has(code));
+      usedCodes.add(code);
+      return code;
+    };
+    const codeByKey = new Map();
+    let changed = false;
+
+    entries.forEach((entry) => {
+      const code = normalizePlayerCode(entry.playerCode);
+      if (!code) return;
+      entry.playerCode = code;
+      playerIdentity(entry).forEach((key) => codeByKey.set(key, code));
+    });
+
+    entries.forEach((entry) => {
+      let code = normalizePlayerCode(entry.playerCode);
+      if (!code) {
+        code = playerIdentity(entry).map((key) => codeByKey.get(key)).find(Boolean) || randomCode();
+        entry.playerCode = code;
+        changed = true;
+      }
+      playerIdentity(entry).forEach((key) => codeByKey.set(key, code));
+    });
+
+    return changed;
+  }
+
   function dayEntriesFor(date, currentEntries = DB.entries) {
     const archived = DB.closedShifts
       .filter((shift) => shift.date === date)
@@ -1035,10 +1634,21 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function metaEntry(value) {
     try {
       const parsed = JSON.parse(value || "{}");
-      return parsed && typeof parsed === "object" ? parsed : { custTag: value || "" };
+      return parsed && typeof parsed === "object" ? { __meta: true, ...parsed } : { __meta: false, custTag: value || "" };
     } catch {
-      return { custTag: value || "" };
+      return { __meta: false, custTag: value || "" };
     }
+  }
+
+  function cleanLegacyText(value) {
+    const text = String(value || "").trim();
+    if (!text || /^[\[{]/.test(text)) return "";
+    return text;
+  }
+
+  function cleanLoadedEmail(value) {
+    const text = cleanLegacyText(value);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text) ? text : "";
   }
 
   function entryToRow(entry, session) {
@@ -1052,7 +1662,14 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       salesName: entry.salesName || "",
       dispute: !!entry.dispute,
       disputeNote: entry.disputeNote || "",
-      promoP: num(entry.promoP)
+      playerCode: normalizePlayerCode(entry.playerCode),
+      promoP: num(entry.promoP),
+      referralForCode: normalizePlayerCode(entry.referralForCode),
+      referredByCode: normalizePlayerCode(entry.referredByCode),
+      referralNote: entry.referralNote || "",
+      referralBonusType: entry.referralBonusType || "",
+      referralBonusAmount: num(entry.referralBonusAmount),
+      referralBonusPercent: num(entry.referralBonusPercent)
     };
     return {
       id: entry.id,
@@ -1102,7 +1719,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       rdCredits: num(row.rd_credits),
       cashoutPaid: num(row.cashout_paid),
       isNewPlayer: !!row.is_new_player,
-      custTag: meta.custTag || row.cust_tag || "",
+      custTag: meta.__meta ? cleanLegacyText(meta.custTag) : cleanLegacyText(meta.custTag || row.cust_tag),
       payMethodId: row.pay_method_id || "",
       payTagId: meta.payTagId || "",
       payTagLabel: meta.payTagLabel || "",
@@ -1112,9 +1729,16 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       salesName: meta.salesName || "",
       dispute: !!meta.dispute,
       disputeNote: meta.disputeNote || "",
-      legalName: row.legal_name || "",
-      contact: row.contact || "",
-      email: row.email || "",
+      playerCode: normalizePlayerCode(meta.playerCode),
+      referralForCode: normalizePlayerCode(meta.referralForCode),
+      referredByCode: normalizePlayerCode(meta.referredByCode),
+      referralNote: meta.referralNote || "",
+      referralBonusType: meta.referralBonusType || "",
+      referralBonusAmount: num(meta.referralBonusAmount),
+      referralBonusPercent: num(meta.referralBonusPercent),
+      legalName: cleanLegacyText(row.legal_name),
+      contact: cleanLegacyText(row.contact),
+      email: cleanLoadedEmail(row.email),
       createdAt: row.created_at || new Date().toISOString()
     };
   }
@@ -1127,6 +1751,10 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       report: record.report || null,
       checkInAt: record.checkInAt || record.checkIn || "",
       checkOutAt: record.checkOutAt || record.checkOut || "",
+      shiftId: record.shiftId || "",
+      shiftName: record.shiftName || "",
+      breakMins: num(record.breakMins),
+      breakStartAt: record.breakStartAt || "",
       missedCheckoutAcknowledged: !!record.missedCheckoutAcknowledged
     };
     return {
@@ -1155,6 +1783,10 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       checkInAt: meta.checkInAt || row.check_in || "",
       checkOut: row.check_out || "",
       checkOutAt: meta.checkOutAt || row.check_out || "",
+      shiftId: meta.shiftId || "",
+      shiftName: meta.shiftName || "",
+      breakMins: num(meta.breakMins),
+      breakStartAt: meta.breakStartAt || "",
       duration: num(row.duration_mins),
       status: row.status || "present",
       leaveReason: cleanReason(meta.leaveReason || "", "leaveReason"),
@@ -1192,9 +1824,224 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const url = `${sbUrl(table)}${query || ""}`;
     const response = await fetch(url, { ...options, headers: { ...sbHeaders(), ...(options.headers || {}) } });
     if (!response.ok) throw new Error(`Supabase ${table} ${response.status}`);
+    SUPABASE_READY = true;
     if (response.status === 204) return null;
     const text = await response.text();
     return text ? JSON.parse(text) : null;
+  }
+
+  function sheetEnabled() {
+    return !!(DB?.googleSheets?.enabled && DB.googleSheets.webAppUrl && DB.googleSheets.token && IS_ONLINE);
+  }
+
+  function queueSheetBatch(sheet, headers, rows, reason) {
+    if (!DB.googleSheets) return;
+    const cleanRows = (rows || []).filter((row) => Array.isArray(row));
+    if (!cleanRows.length) return;
+    DB.googleSheets.pending = Array.isArray(DB.googleSheets.pending) ? DB.googleSheets.pending : [];
+    DB.googleSheets.pending.push({
+      id: uid("sheet"),
+      at: new Date().toISOString(),
+      sheet,
+      headers,
+      rows: cleanRows,
+      reason: reason || ""
+    });
+    DB.googleSheets.pending = DB.googleSheets.pending.slice(-500);
+    saveDB();
+    void flushSheetBackup();
+  }
+
+  async function flushSheetBackup() {
+    if (sheetSyncBusy || !sheetEnabled() || !DB.googleSheets.pending?.length) return false;
+    sheetSyncBusy = true;
+    const batch = DB.googleSheets.pending[0];
+    lastSheetStatus = `Sending ${batch.sheet} backup to Google Sheets...`;
+    try {
+      await fetch(DB.googleSheets.webAppUrl, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          token: DB.googleSheets.token,
+          source: "Panda Squad CRM",
+          sentAt: new Date().toISOString(),
+          batches: [batch]
+        })
+      });
+      DB.googleSheets.pending.shift();
+      lastSheetStatus = `Google Sheets backup request sent at ${new Date().toLocaleTimeString()}. Check the Sheet tabs.`;
+      saveDB();
+      pushConfig();
+    } catch {
+      lastSheetStatus = "Google Sheets backup is queued. Check internet or Apps Script settings.";
+    }
+    sheetSyncBusy = false;
+    render();
+    if (DB.googleSheets.pending?.length) void flushSheetBackup();
+    return !DB.googleSheets.pending?.length;
+  }
+
+  function gameBalanceColumns() {
+    return ["Snapshot At", "Reason", "Related ID", "Shift", "Game ID", "Game Name", "Backend Loaded", "Paid Issued", "Freeplay Issued", "Referral Issued", "Redeem Returned", "Expected Balance"];
+  }
+
+  function gameBalanceRow(game, reason, relatedId) {
+    const usage = gameUsage(game);
+    return [
+      new Date().toISOString(),
+      reason || "",
+      relatedId || "",
+      DB.activeShiftName || getCurrentShiftName(),
+      game.id,
+      game.name,
+      num(game.backendLoaded),
+      usage.paid,
+      usage.freeplay,
+      usage.referral,
+      usage.redeem,
+      usage.current
+    ];
+  }
+
+  function queueGameBalanceBackup(reason, relatedId, gameId) {
+    const games = gameId ? DB.games.filter((game) => game.id === gameId || game.name === gameId) : DB.games;
+    queueSheetBatch("GameBalances", gameBalanceColumns(), games.map((game) => gameBalanceRow(game, reason, relatedId)), reason);
+  }
+
+  function attendanceSheetColumns() {
+    return ["Updated At", "Record ID", "Employee ID", "Employee Name", "Date", "Shift", "Status", "Check In", "Check Out", "Break Minutes", "Duration Minutes", "Reason"];
+  }
+
+  function attendanceSheetRow(record, reason) {
+    return [
+      new Date().toISOString(),
+      record.id,
+      record.agentId,
+      record.agentName,
+      isoToLabel(record.date),
+      record.shiftName || "",
+      record.status || "present",
+      record.checkInAt || record.checkIn || "",
+      record.checkOutAt || record.checkOut || "",
+      num(record.breakMins),
+      num(record.duration),
+      reason || record.leaveReason || record.offReason || ""
+    ];
+  }
+
+  function closedShiftColumns() {
+    return ["Closed At", "Closed ID", "Date", "Shift", "Close Type", "Close Reason", "Forced", "Paid Count", "Freeplay Count", "Redeem Count", "Sales Amount", "Coins Issued", "Cashout Paid", "New Players"];
+  }
+
+  function closedShiftRow(shift) {
+    const summary = shift.summary || {};
+    return [
+      shift.closedAt || shift.createdAt || "",
+      shift.id,
+      isoToLabel(shift.date),
+      summary.shiftName || "",
+      summary.closeType || "",
+      summary.closeReason || "",
+      summary.forced ? "Yes" : "No",
+      num(summary.paidCount),
+      num(summary.fpCount),
+      num(summary.rdCount),
+      num(summary.totalDeposit),
+      num(summary.totalR) + num(summary.totalFP),
+      num(summary.totalCashout),
+      num(summary.newPlayers)
+    ];
+  }
+
+  function vendorLedgerColumns() {
+    return ["Created At", "Vendor ID", "Vendor Name", "Entry Type", "Amount", "Reference", "Note"];
+  }
+
+  function vendorLedgerRow(vendor, type, item) {
+    return [
+      item?.at || new Date().toISOString(),
+      vendor?.id || "",
+      vendor?.name || "",
+      type,
+      num(item?.amount),
+      item?.reference || "",
+      item?.note || ""
+    ];
+  }
+
+  function expenseSheetColumns() {
+    return ["Created At", "Expense ID", "Date", "Category", "Description", "Amount"];
+  }
+
+  function expenseSheetRow(expense) {
+    return [new Date().toISOString(), expense.id, isoToLabel(expense.date), expense.category, expense.description, num(expense.amount)];
+  }
+
+  function auditSheetColumns() {
+    return ["Time", "Audit ID", "User", "Action", "Target", "Note"];
+  }
+
+  function auditSheetRow(log) {
+    return [log.at, log.id, log.actor, log.action, log.target, log.note || ""];
+  }
+
+  function backupEntryToSheets(entry, reason) {
+    queueSheetBatch("Transactions", transactionExportColumns(), [transactionExportRow(entry)], reason || "Transaction");
+    if (entry.gameId || entry.gameName) queueGameBalanceBackup(reason || "Transaction", entry.id, entry.gameId || entry.gameName);
+  }
+
+  function saveGoogleSheets(enabled) {
+    if (!requirePerm("Manage Settings")) return;
+    const before = clone(DB.googleSheets || {});
+    DB.googleSheets = {
+      ...(DB.googleSheets || {}),
+      enabled,
+      webAppUrl: document.getElementById("gs-url")?.value.trim() || "",
+      token: document.getElementById("gs-token")?.value.trim() || "",
+      pending: Array.isArray(DB.googleSheets?.pending) ? DB.googleSheets.pending : []
+    };
+    audit("Save Google Sheets Backup Settings", "Google Sheets", before, DB.googleSheets);
+    saveDB();
+    pushConfig();
+    lastSheetStatus = enabled ? "Google Sheets backup settings saved." : "Google Sheets backup disabled.";
+    render();
+    if (enabled) void flushSheetBackup();
+  }
+
+  function testGoogleSheets() {
+    if (!requirePerm("Manage Settings")) return;
+    DB.googleSheets = {
+      ...(DB.googleSheets || {}),
+      enabled: true,
+      webAppUrl: document.getElementById("gs-url")?.value.trim() || DB.googleSheets?.webAppUrl || "",
+      token: document.getElementById("gs-token")?.value.trim() || DB.googleSheets?.token || "",
+      pending: Array.isArray(DB.googleSheets?.pending) ? DB.googleSheets.pending : []
+    };
+    queueSheetBatch("BackupStatus", ["Sent At", "Source", "Status", "Pending Before Send"], [[new Date().toISOString(), "Panda Squad CRM", "Test backup row", DB.googleSheets.pending.length]], "Test");
+    lastSheetStatus = "Google Sheets test row queued.";
+    render();
+  }
+
+  function syncCurrentToGoogleSheets() {
+    if (!requirePerm("Export / Backup")) return;
+    if (!DB.googleSheets?.enabled) return alert("Enable Google Sheets backup first.");
+    if (!confirm("Append the current CRM data to Google Sheets now?\n\nThis is append-only, so existing sheet rows will not be edited or removed.")) return;
+    const entries = allEntries();
+    if (entries.length) queueSheetBatch("Transactions", transactionExportColumns(), entries.map(transactionExportRow), "Manual full sync");
+    queueGameBalanceBackup("Manual full sync", "all");
+    if (DB.closedShifts.length) queueSheetBatch("ClosedShifts", closedShiftColumns(), DB.closedShifts.map(closedShiftRow), "Manual full sync");
+    if (DB.attendance.length) queueSheetBatch("Attendance", attendanceSheetColumns(), DB.attendance.map((record) => attendanceSheetRow(record, "Manual full sync")), "Manual full sync");
+    const ledgerRows = [];
+    DB.payVendors.forEach((vendor) => {
+      (vendor.payments || []).forEach((payment) => ledgerRows.push(vendorLedgerRow(vendor, "Payment", payment)));
+      (vendor.deductions || []).forEach((deduction) => ledgerRows.push(vendorLedgerRow(vendor, "Deduction", deduction)));
+    });
+    if (ledgerRows.length) queueSheetBatch("VendorLedger", vendorLedgerColumns(), ledgerRows, "Manual full sync");
+    if (DB.expenses.length) queueSheetBatch("Expenses", expenseSheetColumns(), DB.expenses.map(expenseSheetRow), "Manual full sync");
+    if (DB.auditLogs.length) queueSheetBatch("AuditLog", auditSheetColumns(), DB.auditLogs.map(auditSheetRow), "Manual full sync");
+    lastSheetStatus = "Current CRM data queued for Google Sheets.";
+    render();
   }
 
   async function pushConfig() {
@@ -1208,10 +2055,12 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function syncEntry(entry) {
     queueSync(entryToRow(entry, entry.shiftSession || "Current"), "entries");
+    backupEntryToSheets(entry, "Transaction");
   }
 
   function syncAttendance(record) {
     queueSync(attendanceToRow(record), "attendance");
+    queueSheetBatch("Attendance", attendanceSheetColumns(), [attendanceSheetRow(record, "Attendance update")], "Attendance update");
   }
 
   function queueSync(row, table) {
@@ -1232,6 +2081,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
           headers: { Prefer: "resolution=merge-duplicates,return=minimal" }
         }, "?on_conflict=id");
       } catch {
+        SUPABASE_READY = false;
+        lastSavedStatus = "Supabase sync failed. Changes are blocked until the connection is fixed.";
         syncQueue.unshift(item);
         break;
       }
@@ -1248,13 +2099,16 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     await sbRequest(table, { method: "DELETE" }, "?id=neq.__none__");
   }
 
+  async function deleteRowsNotIn(table, ids) {
+    if (!ids.length) return deleteAllRows(table);
+    const list = ids.map((id) => encodeURIComponent(String(id))).join(",");
+    await sbRequest(table, { method: "DELETE" }, `?id=not.in.(${list})`);
+  }
+
   async function sbPush() {
     if (!DB.supabase.enabled || !IS_ONLINE) return false;
     try {
       await upsertRows("crm_config", [{ id: CONFIG_ID, payload: JSON.stringify(configPayload()), updated_at: new Date().toISOString() }]);
-      await deleteAllRows("entries");
-      await deleteAllRows("closed_shifts");
-      await deleteAllRows("attendance");
       await upsertRows("entries", DB.entries.map((entry) => entryToRow(entry, entry.shiftSession || "Current")));
       await upsertRows("closed_shifts", DB.closedShifts.map((shift) => ({
         id: shift.id,
@@ -1265,9 +2119,14 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         created_at: shift.createdAt || new Date().toISOString()
       })));
       await upsertRows("attendance", DB.attendance.map(attendanceToRow));
+      await deleteRowsNotIn("entries", DB.entries.map((entry) => entry.id));
+      await deleteRowsNotIn("closed_shifts", DB.closedShifts.map((shift) => shift.id));
+      await deleteRowsNotIn("attendance", DB.attendance.map((record) => record.id));
       lastSavedStatus = `Synced at ${new Date().toLocaleTimeString()}`;
+      SUPABASE_READY = true;
       return true;
     } catch {
+      SUPABASE_READY = false;
       return false;
     }
   }
@@ -1281,8 +2140,10 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         sbRequest("closed_shifts", { method: "GET", headers: { Prefer: "return=representation" } }, "?select=*"),
         sbRequest("attendance", { method: "GET", headers: { Prefer: "return=representation" } }, "?select=*")
       ]);
-      if (!configRows || !configRows.length) return false;
-      const config = JSON.parse(configRows[0].payload || "{}");
+      const hasConfig = !!(configRows && configRows.length);
+      const hasRemoteRows = [entryRows, closedRows, attendanceRows].some((rows) => Array.isArray(rows) && rows.length);
+      if (!hasConfig && !hasRemoteRows) return false;
+      const config = hasConfig ? JSON.parse(configRows[0].payload || "{}") : {};
       const next = normalizeDB(config);
       next.entries = (entryRows || []).map(rowToEntry);
       next.closedShifts = (closedRows || []).map((row) => {
@@ -1299,25 +2160,84 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         };
       });
       next.attendance = (attendanceRows || []).map(rowToAttendance);
+      const assignedCodes = assignMissingPlayerCodes(next);
       DB = next;
       saveDB();
+      if (assignedCodes) await sbPush();
       if (!silent) lastSavedStatus = `Pulled at ${new Date().toLocaleTimeString()}`;
+      SUPABASE_READY = true;
       return true;
     } catch {
+      SUPABASE_READY = false;
       return false;
     }
   }
 
   function checkOnline() {
-    if (IS_ONLINE) return true;
-    alert("No internet connection. All changes are blocked until you reconnect.");
+    if (!IS_ONLINE) {
+      alert("No internet connection. All changes are blocked until you reconnect.");
+      return false;
+    }
+    if (!SUPABASE_READY) {
+      alert("Supabase is not connected. Changes are blocked so data is not stored only in this browser.");
+      return false;
+    }
+    return true;
+  }
+
+  function confirmDelete(message) {
+    return confirm(`${message}\n\nThis cannot be undone. Click OK to confirm.`);
+  }
+
+  function actorName() {
+    return currentAdminUser()?.name || S?.pf?.agent || S?.ff?.agent || S?.rf?.agent || "System";
+  }
+
+  function audit(action, target, before, after, note) {
+    if (!DB?.auditLogs) DB.auditLogs = [];
+    const log = {
+      id: uid("audit"),
+      at: new Date().toISOString(),
+      actor: actorName(),
+      action,
+      target,
+      note: note || "",
+      before: before ? clone(before) : null,
+      after: after ? clone(after) : null
+    };
+    DB.auditLogs.unshift(log);
+    DB.auditLogs = DB.auditLogs.slice(0, 1000);
+    queueSheetBatch("AuditLog", auditSheetColumns(), [auditSheetRow(log)], "Audit");
+    pushConfig();
+  }
+
+  function hasPerm(perm) {
+    if (!perm) return true;
+    const user = currentAdminUser();
+    if (S?.page === "admin" && S?.adminAuthed && !user) return false;
+    if (!user) return true;
+    if (["owner", "admin"].includes(user.role)) return true;
+    return !!user.adminAccess && (user.perms || []).includes(perm);
+  }
+
+  function requirePerm(perm) {
+    if (hasPerm(perm)) return true;
+    alert("You do not have permission for this action.");
     return false;
+  }
+
+  function canAdminSection(section) {
+    if (section === "shifts" || section === "agents") section = "team";
+    if (section === "staff" && !canManageStaffAccess()) return false;
+    if (S?.page === "admin" && S?.adminAuthed && !currentAdminUser()) return false;
+    return hasPerm(ADMIN_SECTION_PERMS[section]);
   }
 
   function updateOnlineStatus() {
     IS_ONLINE = navigator.onLine;
     if (IS_ONLINE) {
       void flushSync();
+      void flushSheetBackup();
       void sbPull(true).then((changed) => {
         if (changed) render();
       });
@@ -1363,7 +2283,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     app.innerHTML = `
       ${renderTopbar()}
       ${IS_ONLINE ? "" : `<div class="offline-banner">No internet connection - all changes are blocked until you reconnect</div>`}
-      <main class="layout">${S.page === "admin" ? renderAdminApp() : S.page === "closed" ? renderClosedScreen() : renderShiftApp()}</main>
+      <main class="layout">${S.page === "admin" ? (S.adminAuthed && currentAdminUser() ? renderAdminApp() : renderAdminLocked()) : S.page === "closed" ? renderClosedScreen() : renderShiftApp()}</main>
       ${renderModal()}
     `;
     updateClock();
@@ -1381,11 +2301,11 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       <header class="topbar">
         <div class="brand-wrap">
           <span class="online-pill"><i class="dot ${IS_ONLINE ? "on" : ""}"></i>${IS_ONLINE ? "Online" : "Offline"}</span>
-          <div class="brand-mark"><span class="brand-icon">TM</span><span>TEAM</span><strong>MARKHOR</strong></div>
+          <div class="brand-mark"><span class="brand-icon">PS</span><span>PANDA</span><strong>SQUAD</strong></div>
         </div>
         <nav class="nav">
-          <button class="btn btn-ghost ${S.page === "shift" ? "active" : ""}" onclick="TM.setPage('shift')">Agent Panel</button>
-          <button class="btn btn-ghost ${S.page === "admin" ? "active" : ""}" onclick="TM.openAdminGate()">Admin Dashboard</button>
+          ${isAdminPortal() ? "" : `<button class="btn btn-ghost ${S.page === "shift" ? "active" : ""}" onclick="TM.setPage('shift')">Agent Panel</button>`}
+          ${isAgentPortal() ? "" : `<button class="btn btn-ghost ${S.page === "admin" ? "active" : ""}" onclick="TM.openAdminGate()">Admin Dashboard</button>`}
         </nav>
         <div class="top-right">
           ${themeQuickSelect()}
@@ -1400,10 +2320,30 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function updateClock() {
     const el = document.getElementById("clk");
     if (el) el.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    document.querySelectorAll("[data-break-start]").forEach((node) => {
+      const start = node.getAttribute("data-break-start");
+      const base = num(node.getAttribute("data-break-base"));
+      const elapsedSeconds = Math.floor((Date.now() - new Date(start).getTime()) / 1000);
+      node.textContent = fmtTimer((base * 60) + elapsedSeconds);
+    });
+    document.querySelectorAll("[data-break-left-start]").forEach((node) => {
+      const start = node.getAttribute("data-break-left-start");
+      const base = num(node.getAttribute("data-break-base"));
+      const allowed = num(node.getAttribute("data-break-allowed"));
+      const elapsedSeconds = Math.floor((Date.now() - new Date(start).getTime()) / 1000);
+      node.textContent = fmtTimer((allowed * 60) - ((base * 60) + elapsedSeconds));
+    });
+  }
+
+  function isShiftStale() {
+    const active = activeShiftName();
+    const current = getCurrentShiftName();
+    return isShiftOpen() && active !== current && DB.entries.length > 0 && !shiftContainsNow(active);
   }
 
   function renderShiftApp() {
     if (!isShiftOpen()) return renderClosedScreen();
+    if (isShiftStale()) return renderShiftNeedsClose();
     return `<div class="content-scroll">
       <div class="content-inner">
         ${renderKpiBar()}
@@ -1412,11 +2352,13 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
             ["paid", "Paid Recharge"],
             ["fp", "Freeplay"],
             ["rd", "Redeem / Cashout"],
+            ["referral", "Referral Bonus"],
+            ["player", "Search Player"],
             ["bal", "Game Balance"],
             ["att", "Attendance"]
           ].map(([key, label]) => `<button class="tab ${S.shiftTab === key ? "active" : ""}" onclick="TM.setShiftTab('${key}')">${label}</button>`).join("")}
         </div>
-        ${S.shiftTab === "paid" ? renderPaidTab() : S.shiftTab === "fp" ? renderFreeplayTab() : S.shiftTab === "rd" ? renderRedeemTab() : S.shiftTab === "bal" ? renderGameBalanceTab() : renderAttendanceTab()}
+        ${S.shiftTab === "paid" ? renderPaidTab() : S.shiftTab === "fp" ? renderFreeplayTab() : S.shiftTab === "rd" ? renderRedeemTab() : S.shiftTab === "referral" ? renderReferralTab() : S.shiftTab === "player" ? renderPlayerSearchTab() : S.shiftTab === "bal" ? renderGameBalanceTab() : renderAttendanceTab()}
       </div>
     </div>`;
   }
@@ -1424,10 +2366,10 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function renderKpiBar() {
     const k = shiftKPIs();
     return `<section class="kpi-row">
-      <article class="kpi-card"><span>Paid Sales</span><strong>${k.paidCount}</strong><small>${fmt$(k.totalR)}</small></article>
+      <article class="kpi-card"><span>Paid Sales</span><strong>${k.paidCount}</strong><small>${fmt$(k.totalDeposit)}</small></article>
       <article class="kpi-card"><span>Freeplay</span><strong>${k.fpCount}</strong><small>${fmt$(k.totalFP)}</small></article>
       <article class="kpi-card"><span>Cashouts</span><strong>${k.rdCount}</strong><small>${fmt$(k.totalCashout)}</small></article>
-      <article class="kpi-card"><span>Sales Amount</span><strong>${fmt$(k.totalR)}</strong><small>Current Shift</small></article>
+      <article class="kpi-card"><span>Sales Amount</span><strong>${fmt$(k.totalDeposit)}</strong><small>Current Shift deposits</small></article>
       <article class="kpi-card"><span>New Players</span><strong>${k.newPlayers}</strong><small>Current Shift</small></article>
     </section>`;
   }
@@ -1468,7 +2410,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       newPlayers,
       salesTarget,
       playersTarget,
-      salesPct: salesTarget ? Math.min(100, Math.round((recharge / salesTarget) * 100)) : 0,
+      salesPct: salesTarget ? Math.min(100, Math.round((deposit / salesTarget) * 100)) : 0,
       playersPct: playersTarget ? Math.min(100, Math.round((newPlayers / playersTarget) * 100)) : 0
     };
   }
@@ -1481,7 +2423,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const game = findGameForEntry(entry);
     const price = num(game?.pricePer1k);
     if (!price) return 0;
-    const credits = entry.type === "paid" ? num(entry.recharge) : entry.type === "freeplay" ? num(entry.fpAmount) : 0;
+    const credits = entry.type === "paid" ? num(entry.recharge) : ["freeplay", "referral"].includes(entry.type) ? num(entry.fpAmount) : 0;
     return (credits / 1000) * price;
   }
 
@@ -1505,7 +2447,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const paid = entries.filter((entry) => entry.type === "paid");
     const freeplay = entries.filter((entry) => entry.type === "freeplay");
     const redeem = entries.filter((entry) => entry.type === "redeem");
-    const sales = paid.reduce((sum, entry) => sum + num(entry.recharge), 0);
+    const sales = paid.reduce((sum, entry) => sum + num(entry.deposit), 0);
     const deposit = paid.reduce((sum, entry) => sum + num(entry.deposit), 0);
     const coinCost = entries.reduce((sum, entry) => sum + entryCoinCost(entry), 0);
     const gatewayFees = entries.reduce((sum, entry) => sum + entryGatewayFee(entry), 0);
@@ -1535,7 +2477,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const rows = allEntries().filter((entry) => entry.agent === name && String(entry.date || "").startsWith(key || monthKey()));
     const paid = rows.filter((entry) => entry.type === "paid");
     return {
-      sales: paid.reduce((sum, entry) => sum + num(entry.recharge), 0),
+      sales: paid.reduce((sum, entry) => sum + num(entry.deposit), 0),
       newPlayers: rows.filter((entry) => entry.isNewPlayer).length,
       paidCount: paid.length
     };
@@ -1544,9 +2486,9 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function renderSalesTargetBanner() {
     const s = monthlySalesSummary();
     return `<section class="target-kpi-row">
-      <article class="kpi-card"><span>Monthly Team Sales Target</span><strong>${s.salesTarget ? fmt$(s.salesTarget) : "Not Set"}</strong><small>Achieved ${fmt$(s.recharge)}${s.salesTarget ? ` (${s.salesPct}%)` : ""}</small><div class="progress-bar"><i style="width:${s.salesPct}%"></i></div></article>
+      <article class="kpi-card"><span>Monthly Team Sales Target</span><strong>${s.salesTarget ? fmt$(s.salesTarget) : "Not Set"}</strong><small>Achieved ${fmt$(s.deposit)}${s.salesTarget ? ` (${s.salesPct}%)` : ""}</small><div class="progress-bar"><i style="width:${s.salesPct}%"></i></div></article>
       <article class="kpi-card"><span>Monthly New Player Target</span><strong>${s.playersTarget ? fmtPlain(s.playersTarget) : "Not Set"}</strong><small>Achieved ${fmtPlain(s.newPlayers)}${s.playersTarget ? ` (${s.playersPct}%)` : ""}</small><div class="progress-bar"><i style="width:${s.playersPct}%"></i></div></article>
-      <article class="kpi-card"><span>Sales Target Remaining</span><strong>${fmt$(Math.max(s.salesTarget - s.recharge, 0))}</strong><small>Monthly recharge counts as sales</small></article>
+      <article class="kpi-card"><span>Sales Target Remaining</span><strong>${fmt$(Math.max(s.salesTarget - s.deposit, 0))}</strong><small>Monthly deposits count as sales</small></article>
     </section>`;
   }
 
@@ -1564,12 +2506,13 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
             ${field("Sales Person", selectInput("paid-agent", agentOptions(), f.agent, "TM.setPF('agent', this.value, false)"))}
           `)}
           ${formSection("Player Info", "tone-purple", 3, `
+            ${field("Player ID", `${textInput("paid-player-code", f.playerCode, "TM.setPF('playerCode', this.value, false)", "placeholder=\"PS-K7F2QA\"")}<button type="button" class="btn btn-ghost btn-sm" onclick="TM.fillPaidFromCode()">Load Player</button>`)}
             ${field("Player Name", textInput("paid-player", f.playerName, "TM.setPF('playerName', this.value, false)", "required placeholder=\"Display name\""))}
-            ${field("Player Facebook Link", `${textInput("paid-link", f.playerUrl, "TM.setPF('playerUrl', this.value, false)", "onblur=\"TM.validateLink(this, 'paid-link-hint')\" required placeholder=\"https://facebook.com/...\"")}<small id="paid-link-hint" class="subtle">Paste the full Facebook link.</small>`, "span2")}
+            ${field("Player Facebook Link", textInput("paid-link", f.playerUrl, "TM.setPF('playerUrl', this.value, false)", "onblur=\"TM.validateLink(this, 'paid-link-hint')\" required placeholder=\"https://facebook.com/...\""))}
           `)}
           ${formSection("Transaction", "tone-green", 4, `
             ${field("Deposit", numberInput("paid-deposit", f.deposit, "TM.updatePaidMoney()", "required min=\"0\" placeholder=\"0.00\""))}
-            ${field("Recharge", numberInput("paid-recharge", f.recharge, "TM.updatePaidMoney()", "required min=\"0\" placeholder=\"0.00\""))}
+            ${field("Recharge", `<input id="paid-recharge" type="number" step="1" value="${esc(f.recharge)}" oninput="TM.updatePaidMoney()" required min="0" placeholder="0">`)}
             ${field("Promo Amount", `<input id="paid-promo" value="${esc(f.promo)}" readonly placeholder="Auto">`)}
             ${field("Promo Percentage", `<input id="paid-promop" value="${esc(f.promoP)}" readonly placeholder="Auto">`)}
           `)}
@@ -1594,7 +2537,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
             ${field("Sales Agent", selectInput("paid-sales", [["", "Select"], ...salesPeople().map((person) => [person.name, person.name])], f.salesName, "TM.setPF('salesName', this.value, false)"))}
             ${field("Player Legal Name", textInput("paid-legal", f.legalName, "TM.setPF('legalName', this.value, false)", "placeholder=\"Full legal name\""))}
             ${field("Contact Number", textInput("paid-contact", f.contact, "TM.setPF('contact', this.value, false)", "placeholder=\"Phone number\""))}
-            ${field("Email", `<input type="email" value="${esc(f.email)}" oninput="TM.setPF('email', this.value, false)" placeholder="player@email.com">`)}
+            ${field("Email", `<input id="paid-email" type="email" value="${esc(f.email)}" oninput="TM.setPF('email', this.value, false)" placeholder="Email address">`)}
           `)}
           <div id="paid-warning" class="${num(f.promoP) > 100 ? "warn-box" : "hidden"} full">Manager approval required on submit.</div>
           <div class="row end full">
@@ -1620,19 +2563,28 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
             ${field("Sales Person", selectInput("free-agent", agentOptions(), f.agent, "TM.setFF('agent', this.value, false)"))}
           `)}
           ${formSection("Player Info", "tone-purple", 3, `
+            ${field("Player ID", `${textInput("free-player-code", f.playerCode, "TM.setFF('playerCode', this.value, false)", "placeholder=\"PS-K7F2QA\"")}<button type="button" class="btn btn-ghost btn-sm" onclick="TM.fillFreeplayFromCode()">Load Player</button>`)}
             ${field("Player Name", textInput("free-player", f.playerName, "TM.setFF('playerName', this.value, false)", "required placeholder=\"Display name\""))}
-            ${field("Player Facebook Link", `${textInput("free-link", f.playerUrl, "TM.setFF('playerUrl', this.value, false)", "onblur=\"TM.validateOptionalLink(this, 'free-link-hint')\" placeholder=\"https://facebook.com/...\"")}<small id="free-link-hint" class="subtle">Optional full Facebook link.</small>`, "span2")}
+            ${field("Player Facebook Link", textInput("free-link", f.playerUrl, "TM.setFF('playerUrl', this.value, false)", "onblur=\"TM.validateLink(this, 'free-link-hint')\" required placeholder=\"https://facebook.com/...\""))}
           `)}
           ${formSection("Freeplay Details", "tone-green", 3, `
-            ${field("Freeplay Amount", numberInput("free-amount", f.fpAmount, "TM.setFF('fpAmount', this.value, false)", "required min=\"0\" placeholder=\"0.00\""))}
+            ${field("Freeplay Amount", `<input id="free-amount" type="number" step="1" value="${esc(f.fpAmount)}" oninput="TM.setFF('fpAmount', this.value, false)" required min="0" placeholder="0">`)}
             ${field("Game Name", selectInput("free-game", gameOptions(true), f.gameName, "TM.setFF('gameName', this.value, false)"))}
             ${field("Game ID", textInput("free-gameid", f.gameId, "TM.setFF('gameId', this.value, false)", "required placeholder=\"Unique player game ID\""))}
+          `)}
+          ${formSection("Channel", "tone-green", 3, `
+            <label><span>Deposit on Page?</span><div class="tog compact">
+              <button type="button" class="t-yes ${f.depositOnPage ? "active" : ""}" onclick="TM.toggleFreeplayDepositOnPage(true)">Yes</button>
+              <button type="button" class="t-no ${!f.depositOnPage ? "active" : ""}" onclick="TM.toggleFreeplayDepositOnPage(false)">No</button>
+            </div></label>
+            ${field("Page Name", selectInput("free-page", [["", "Select Page Name"], ...DB.pageNames.map((page) => [page.name, page.name])], f.depositOnPage ? f.pageName : "", "TM.setFF('pageName', this.value, false)", f.depositOnPage ? "" : "disabled"))}
+            ${field("Hunting Profile Name", textInput("free-hunting", f.huntingProfile, "TM.setFF('huntingProfile', this.value, false)", `${f.depositOnPage ? "disabled" : ""} placeholder=\"Profile name\"`))}
           `)}
           ${formSection("New Player", "tone-red", 4, `
             ${field("Sales Agent", selectInput("free-sales", [["", "Select"], ...salesPeople().map((person) => [person.name, person.name])], f.salesName, "TM.setFF('salesName', this.value, false)"))}
             ${field("Player Legal Name", textInput("free-legal", f.legalName, "TM.setFF('legalName', this.value, false)", "placeholder=\"Full legal name\""))}
             ${field("Contact Number", textInput("free-contact", f.contact, "TM.setFF('contact', this.value, false)", "placeholder=\"Phone number\""))}
-            ${field("Email", `<input type="email" value="${esc(f.email)}" oninput="TM.setFF('email', this.value, false)" placeholder="player@email.com">`)}
+            ${field("Email", `<input id="free-email" type="email" value="${esc(f.email)}" oninput="TM.setFF('email', this.value, false)" placeholder="Email address">`)}
           `)}
           <div class="row end full">
             <button type="button" class="btn btn-ghost" onclick="TM.clearFreeplay()">Clear</button>
@@ -1644,30 +2596,28 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     </section>`;
   }
 
-  function redeemLookupInfo(gameId) {
+  function redeemLookupInfo(gameId, playerCode) {
+    const code = normalizePlayerCode(playerCode);
     const id = String(gameId || "").trim();
-    if (!id) return "";
-    const rows = allEntries().filter((entry) => entry.gameId === id).sort((a, b) => String(b.createdAt || b.date).localeCompare(String(a.createdAt || a.date)));
+    if (!id && !code) return "";
+    const rows = allEntries().filter((entry) => code ? normalizePlayerCode(entry.playerCode) === code : entry.gameId === id).sort((a, b) => String(b.createdAt || b.date).localeCompare(String(a.createdAt || a.date)));
     const paidRows = rows.filter((entry) => entry.type === "paid");
     const freeRows = rows.filter((entry) => entry.type === "freeplay");
+    const referralRows = rows.filter((entry) => entry.type === "referral");
     const redeemRows = rows.filter((entry) => entry.type === "redeem");
-    const latest = paidRows[0] || rows[0];
-    if (!latest) return `<div class="hint full">No previous player record found for this Game ID.</div>`;
+    if (!rows.length) return `<div class="hint full">No previous player record found for this ${code ? "Player ID" : "Game ID"}.</div>`;
     const totalRecharge = paidRows.reduce((sum, entry) => sum + num(entry.recharge), 0);
     const totalFreeplay = freeRows.reduce((sum, entry) => sum + num(entry.fpAmount), 0);
+    const totalReferral = referralRows.reduce((sum, entry) => sum + num(entry.fpAmount), 0);
     const totalRedeemed = redeemRows.reduce((sum, entry) => sum + num(entry.rdCredits), 0);
     const totalCashout = redeemRows.reduce((sum, entry) => sum + num(entry.cashoutPaid), 0);
-    const link = latest.playerUrl ? `<a href="${esc(latest.playerUrl)}" target="_blank" rel="noreferrer">Open Facebook Link</a>` : `<span class="muted">No Facebook Link</span>`;
     return `<div class="hint full lookup-grid">
-      <span><b>Player Name</b>${esc(latest.playerName || "Not Provided")}</span>
-      <span><b>Game Name</b>${esc(latest.gameName || "Not Provided")}</span>
-      <span><b>Sales Person</b>${esc(latest.agent || "Not Provided")}</span>
-      <span><b>Legal Name</b>${esc(latest.legalName || "Not Provided")}</span>
-      <span><b>Contact Number</b>${esc(latest.contact || "Not Provided")}</span>
-      <span><b>Email</b>${esc(latest.email || "Not Provided")}</span>
-      <span><b>Player Facebook Link</b>${link}</span>
-      <span><b>Total Recharge</b>${fmt$(totalRecharge)}</span>
-      <span><b>Total Credits Given</b>${fmt$(totalRecharge + totalFreeplay)}</span>
+      <span><b>Paid Records</b>${fmtPlain(paidRows.length)}</span>
+      <span><b>Freeplay Records</b>${fmtPlain(freeRows.length)}</span>
+      <span><b>Redeem Records</b>${fmtPlain(redeemRows.length)}</span>
+      <span><b>Total Paid Recharge</b>${fmt$(totalRecharge)}</span>
+      <span><b>Total Freeplay</b>${fmtPlain(totalFreeplay)}</span>
+      <span><b>Total Referral</b>${fmtPlain(totalReferral)}</span>
       <span><b>Total Redeem Credits</b>${fmtPlain(totalRedeemed)}</span>
       <span><b>Total Cashout Paid</b>${fmt$(totalCashout)}</span>
     </div>`;
@@ -1686,12 +2636,13 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
             ${field("Sales Person", selectInput("redeem-agent", agentOptions(), f.agent, "TM.setRF('agent', this.value, false)"))}
           `)}
           ${formSection("Cashout Details", "tone-red", 4, `
+            ${field("Player ID", `${textInput("redeem-player-code", f.playerCode, "TM.setRF('playerCode', this.value, false)", "placeholder=\"PS-K7F2QA\"")}<button type="button" class="btn btn-ghost btn-sm" onclick="TM.fillRedeemFromCode()">Load Player</button>`)}
             ${field("Game ID", textInput("redeem-gameid", f.gameId, "TM.setRF('gameId', this.value, false)", "onblur=\"TM.redeemLookup()\" required placeholder=\"Unique player game ID\""))}
             ${field("Game Name", selectInput("redeem-game", gameOptions(true), f.gameName, "TM.setRF('gameName', this.value, false)"))}
-            ${field("Redeem Credits", numberInput("redeem-credits", f.rdCredits, "TM.setRF('rdCredits', this.value, false)", "required min=\"0\" placeholder=\"0\""))}
+            ${field("Redeem Credits", `<input id="redeem-credits" type="number" step="1" value="${esc(f.rdCredits)}" oninput="TM.setRF('rdCredits', this.value, false)" required min="0" placeholder="0">`)}
             ${field("Cashout Paid", numberInput("redeem-cashout", f.cashoutPaid, "TM.setRF('cashoutPaid', this.value, false)", "required min=\"0\" placeholder=\"0.00\""))}
           `)}
-          ${redeemLookupInfo(f.gameId)}
+          ${redeemLookupInfo(f.gameId, f.playerCode)}
           <div class="row end full">
             <button type="button" class="btn btn-ghost" onclick="TM.clearRedeem()">Clear</button>
             <button class="btn btn-danger" ${IS_ONLINE ? "" : "disabled"}>Add Redeem</button>
@@ -1702,18 +2653,150 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     </section>`;
   }
 
+  function setReferral(key, value, rerender = true) {
+    S.referral[key] = value;
+    if (key === "referrerType") updateReferralTypeFields();
+    if (rerender) render();
+  }
+
+  function updateReferralTypeFields() {
+    const isCustomer = S.referral.referrerType === "customer";
+    const byCode = document.getElementById("ref-by-code");
+    const name = document.getElementById("ref-name");
+    if (byCode) byCode.required = isCustomer;
+    if (name) name.required = !isCustomer;
+  }
+
+  function renderReferralTab() {
+    const f = S.referral;
+    return `<section class="stack">
+      ${renderSalesTargetBanner()}
+      <form class="fc sales-sheet" onsubmit="TM.submitReferralBonus(event)" novalidate>
+        <div class="fc-head">Referral Bonus Form</div>
+        <div class="fg sales-form">
+          ${formSection("Session Info", "tone-cyan", 3, `
+            ${field("Date", dateInput("ref-date", f.date, "TM.setReferral('date', this.value, false)", "required"))}
+            ${field("Shift", selectInput("ref-shift", shiftOptions(), f.shift || activeShiftName(), "TM.setReferral('shift', this.value, false)"))}
+            ${field("Sales Person", selectInput("ref-agent", agentOptions(), f.agent, "TM.setReferral('agent', this.value, false)"))}
+          `)}
+          ${formSection("Referrer", "tone-warn", 4, `
+            ${field("Referrer Type", selectInput("ref-type", [["customer", "Existing Customer"], ["external", "Not Customer"]], f.referrerType, "TM.setReferral('referrerType', this.value, false)"))}
+            ${field("Referring Player ID", textInput("ref-by-code", f.referredByCode, "TM.setReferral('referredByCode', this.value, false)", `${f.referrerType === "customer" ? "required" : ""} placeholder=\"PS-K7F2QA\"`))}
+            ${field("Referrer Name", textInput("ref-name", f.referrerName, "TM.setReferral('referrerName', this.value, false)", `${f.referrerType === "external" ? "required" : ""} placeholder=\"Name\"`))}
+            ${field("Referrer Link / Contact", textInput("ref-contact", f.referrerContact, "TM.setReferral('referrerContact', this.value, false)", "placeholder=\"Facebook, phone, or note\""))}
+          `)}
+          ${formSection("Bonus Credits", "tone-green", 4, `
+            ${field("Referred New Player ID", textInput("ref-player-code", f.referredPlayerCode, "TM.setReferral('referredPlayerCode', this.value, false)", "required placeholder=\"PS-K7F2QA\""))}
+            ${field("Game ID", textInput("ref-gameid", f.gameId, "TM.setReferral('gameId', this.value, false)", "required placeholder=\"Referrer's game ID\""))}
+            ${field("Game Name", selectInput("ref-game", gameOptions(true), f.gameName, "TM.setReferral('gameName', this.value, false)"))}
+            ${field("Coins Issued", `<input id="ref-coins" type="number" step="1" value="${esc(f.coins)}" oninput="TM.setReferral('coins', this.value, false)" required min="0" placeholder="0">`)}
+          `)}
+          ${formSection("Notes", "tone-purple", 1, `
+            ${field("Note", textInput("ref-note", f.note, "TM.setReferral('note', this.value, false)", "placeholder=\"Bonus details\""))}
+          `)}
+          <div class="row end full">
+            <button type="button" class="btn btn-ghost" onclick="TM.clearReferralBonus()">Clear</button>
+            <button class="btn btn-warn" ${IS_ONLINE ? "" : "disabled"}>Add Referral Bonus</button>
+          </div>
+        </div>
+      </form>
+      ${renderEntriesTable()}
+    </section>`;
+  }
+
+  function playerSummaryRows(code) {
+    const normalized = normalizePlayerCode(code);
+    if (!normalized) return [];
+    return allEntries()
+      .filter((entry) => normalizePlayerCode(entry.playerCode) === normalized)
+      .sort((a, b) => String(b.createdAt || b.date).localeCompare(String(a.createdAt || a.date)));
+  }
+
+  function renderPlayerSearchTab() {
+    const code = normalizePlayerCode(S.playerLookupCode);
+    const rows = playerSummaryRows(code);
+    const latest = rows[0];
+    const paid = rows.filter((entry) => entry.type === "paid");
+    const freeplay = rows.filter((entry) => entry.type === "freeplay");
+    const referralRows = rows.filter((entry) => entry.type === "referral");
+    const redeem = rows.filter((entry) => entry.type === "redeem");
+    const totalDeposit = paid.reduce((sum, entry) => sum + num(entry.deposit), 0);
+    const totalRecharge = paid.reduce((sum, entry) => sum + num(entry.recharge), 0);
+    const totalFreeplay = freeplay.reduce((sum, entry) => sum + num(entry.fpAmount), 0);
+    const totalReferral = referralRows.reduce((sum, entry) => sum + num(entry.fpAmount), 0);
+    const totalRedeemCredits = redeem.reduce((sum, entry) => sum + num(entry.rdCredits), 0);
+    const totalCashout = redeem.reduce((sum, entry) => sum + num(entry.cashoutPaid), 0);
+    const referralEntries = allEntries().filter((entry) => entry.type === "referral");
+    const referredPeople = referralEntries.filter((entry) => normalizePlayerCode(entry.referredByCode || entry.playerCode) === code);
+    const referredByRows = referralEntries.filter((entry) => normalizePlayerCode(entry.referralForCode) === code);
+    return `<section class="stack">
+      <div class="fc"><div class="fc-head">Search Player</div><div class="fg stack">
+        <div class="grid c3">
+          ${field("Player ID", textInput("player-search-code", S.playerLookupCode, "TM.setS('playerLookupCode', this.value, false)", "placeholder=\"PS-K7F2QA\""))}
+          <div class="row end"><button class="btn btn-primary" onclick="TM.renderNow()">Search</button><button class="btn btn-ghost" onclick="TM.clearPlayerCodeSearch()">Clear</button></div>
+        </div>
+        ${!code ? `<div class="empty">Enter a player ID to view player history.</div>` : !rows.length ? `<div class="empty">No player found for ${esc(code)}.</div>` : `
+          <div class="grid c4">
+            <article class="kpi-card"><span>Total Deposit</span><strong>${fmt$(totalDeposit)}</strong><small>${paid.length} paid records</small></article>
+            <article class="kpi-card"><span>Total Recharge</span><strong>${fmt$(totalRecharge)}</strong><small>Coins given</small></article>
+            <article class="kpi-card"><span>Freeplay</span><strong>${fmt$(totalFreeplay)}</strong><small>${freeplay.length} records</small></article>
+            <article class="kpi-card"><span>Referral Credits</span><strong>${fmtPlain(totalReferral)}</strong><small>${referralRows.length} records</small></article>
+            <article class="kpi-card"><span>Cashout Paid</span><strong>${fmt$(totalCashout)}</strong><small>${redeem.length} redeem records</small></article>
+          </div>
+          <div class="grid c4">
+            <article class="kpi-card"><span>Redeem Credits</span><strong>${fmtPlain(totalRedeemCredits)}</strong><small>Total credits redeemed</small></article>
+            <article class="kpi-card"><span>Transactions</span><strong>${rows.length}</strong><small>All records</small></article>
+            <article class="kpi-card"><span>First Seen</span><strong>${esc(isoToLabel(rows[rows.length - 1]?.date))}</strong><small>${esc(rows[rows.length - 1]?.shift || "")}</small></article>
+            <article class="kpi-card"><span>Last Seen</span><strong>${esc(isoToLabel(latest?.date))}</strong><small>${esc(latest?.shift || "")}</small></article>
+          </div>
+          <div class="hint lookup-grid">
+            <span><b>Player ID</b>${esc(code)}</span>
+            <span><b>Player Name</b>${esc(latest.playerName || "Not Provided")}</span>
+            <span><b>Game ID</b>${esc(latest.gameId || "Not Provided")}</span>
+            <span><b>Game Name</b>${esc(latest.gameName || "Not Provided")}</span>
+            <span><b>Legal Name</b>${esc(latest.legalName || "Not Provided")}</span>
+            <span><b>Sales Person</b>${esc(latest.agent || "Not Provided")}</span>
+          </div>
+          <div class="grid c2">
+            <article class="balance-card stack"><strong>People Referred</strong>${simpleTable(["Date", "Player ID", "Bonus", "Note"], referredPeople.map((entry) => [esc(isoToLabel(entry.date)), esc(normalizePlayerCode(entry.referralForCode)), referralBonusText(entry), esc(entry.referralNote || "")]))}</article>
+            <article class="balance-card stack"><strong>Referred By</strong>${simpleTable(["Date", "Referred By ID", "Bonus", "Note"], referredByRows.map((entry) => [esc(isoToLabel(entry.date)), esc(normalizePlayerCode(entry.referredByCode || entry.playerCode)), referralBonusText(entry), esc(entry.referralNote || "")]))}</article>
+          </div>
+          ${simpleTable(["Date", "Type", "Shift", "Agent", "Deposit", "Recharge / Amount", "Cashout"], rows.map((entry) => [
+            esc(isoToLabel(entry.date)),
+            entryBadges(entry),
+            esc(entry.shift),
+            esc(entry.agent),
+            fmt$(entry.deposit),
+            entryAmountText(entry),
+            fmt$(entry.cashoutPaid)
+          ]))}
+        `}
+      </div></div>
+    </section>`;
+  }
+
   function renderGameBalanceTab() {
-    return `<section class="game-balance-grid">
-      ${DB.games.map((game) => {
-        const usage = gameUsage(game);
-        return `<article class="balance-card game-balance-card">
-          <span class="badge bd-purple">${esc(game.name)}</span>
-          <div class="row between"><span class="muted">Starting Balance</span><strong>${fmt$(game.backendLoaded)}</strong></div>
-          <div class="row between"><span class="muted">Total Used</span><strong class="danger-text">-${fmt$(usage.used)}</strong></div>
-          <div class="row between"><span class="muted">Total Redeem</span><strong class="success-text">${fmt$(usage.redeem)}</strong></div>
-          <div class="row between"><span class="muted">Current Balance</span><strong class="${usage.current >= 0 ? "success-text" : "danger-text"}">${fmt$(usage.current)}</strong></div>
-        </article>`;
-      }).join("")}
+    const rows = DB.games.map((game) => {
+      const usage = gameUsage(game);
+      const status = usage.current < 0 ? `<span class="badge bd-red">Negative</span>` : usage.current < 100 ? `<span class="badge bd-warn">Low</span>` : `<span class="badge bd-green">OK</span>`;
+      return [esc(game.name), fmtPlain(game.backendLoaded), fmtPlain(usage.paid), fmtPlain(usage.freeplay), fmtPlain(usage.referral), fmtPlain(usage.redeem), `<strong class="${usage.current >= 0 ? "success-text" : "danger-text"}">${fmtPlain(usage.current)}</strong>`, status];
+    });
+    return `<section class="stack">
+      <div class="game-balance-grid">
+        ${DB.games.map((game) => {
+          const usage = gameUsage(game);
+          return `<article class="balance-card game-balance-card">
+            <span class="badge bd-purple">${esc(game.name)}</span>
+            <div class="row between"><span class="muted">Backend Loaded</span><strong>${fmtPlain(game.backendLoaded)}</strong></div>
+            <div class="row between"><span class="muted">Paid Issued</span><strong class="danger-text">-${fmtPlain(usage.paid)}</strong></div>
+            <div class="row between"><span class="muted">Freeplay Issued</span><strong class="danger-text">-${fmtPlain(usage.freeplay)}</strong></div>
+            <div class="row between"><span class="muted">Referral Issued</span><strong class="danger-text">-${fmtPlain(usage.referral)}</strong></div>
+            <div class="row between"><span class="muted">Redeem Returned</span><strong class="success-text">${fmtPlain(usage.redeem)}</strong></div>
+            <div class="row between"><span class="muted">Expected Balance</span><strong class="${usage.current >= 0 ? "success-text" : "danger-text"}">${fmtPlain(usage.current)}</strong></div>
+          </article>`;
+        }).join("")}
+      </div>
+      <div class="fc"><div class="fc-head">Game Reconciliation</div><div class="fg">${simpleTable(["Game", "Loaded", "Paid Issued", "Freeplay", "Referral", "Redeem Returned", "Expected Balance", "Status"], rows)}</div></div>
     </section>`;
   }
 
@@ -1726,30 +2809,38 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function renderAttendanceTab() {
-    const date = todayISO();
     const people = allPeople();
     const stats = { in: 0, out: 0, leave: 0, missing: 0 };
     const cards = people.map((person) => {
+      const date = attendanceDateForPerson(person);
       const rec = getAttendance(person.id, date);
       const status = attendanceStatus(rec);
       if (status.cls === "in") stats.in += 1;
       else if (status.cls === "done") stats.out += 1;
       else if (status.cls === "leave") stats.leave += 1;
       else stats.missing += 1;
-      const duration = rec?.checkInAt && !rec?.checkOutAt ? formatDuration(minutesBetween(rec.checkInAt, new Date().toISOString())) : formatDuration(rec?.duration || 0);
-      return `<article class="person-card ${status.cls}">
+      const rawMins = rec?.checkInAt ? minutesBetween(rec.checkInAt, rec.checkOutAt || new Date().toISOString()) : 0;
+      const netMins = rec?.checkOutAt ? num(rec.duration) : Math.max(0, rawMins - currentBreakMinutes(rec));
+      const breakLeft = breakTimeLeft(person, rec);
+      const breakUsed = currentBreakMinutes(rec);
+      const breakAllowed = num(person?.breakAllowedMins ?? 30);
+      const breakUsedText = rec?.breakStartAt ? `<span data-break-start="${esc(rec.breakStartAt)}" data-break-base="${esc(rec.breakMins || 0)}">${fmtTimer(breakUsed * 60)}</span>` : fmtTimer(breakUsed * 60);
+      const breakLeftText = rec?.breakStartAt ? `<span data-break-left-start="${esc(rec.breakStartAt)}" data-break-base="${esc(rec.breakMins || 0)}" data-break-allowed="${esc(breakAllowed)}">${fmtTimer(breakLeft * 60)}</span>` : fmtTimer(breakLeft * 60);
+      return `<article class="person-card time-card ${status.cls}">
         <h3><span>${esc(person.name)}</span><span class="avatar" style="background:${esc(person.color)}">${esc(initials(person.name))}</span></h3>
-        <div class="status-line"><span class="status-icon">${status.icon}</span><strong>${esc(status.label)}</strong><span>${esc(person.role)}</span></div>
-        <p class="muted">Duration on shift: ${duration}</p>
-        <p class="subtle">Check In Time: ${rec?.checkInAt ? fmtTime(rec.checkInAt) : "Not Recorded"}</p>
-        <p class="subtle">Check Out Time: ${rec?.checkOutAt ? fmtTime(rec.checkOutAt) : "Not Recorded"}</p>
-        ${rec?.leaveReason || rec?.offReason ? `<p class="warn-text">Reason: ${esc(rec.leaveReason || rec.offReason)}</p>` : ""}
-        <div class="row">
-          ${!rec || (!rec.checkInAt && !rec.checkOutAt && !["leave", "off", "leave-approved"].includes(rec.status)) ? `<button class="btn btn-success btn-sm" onclick="TM.checkIn('${person.id}')" ${IS_ONLINE ? "" : "disabled"}>Check In</button><button class="btn btn-warn btn-sm" onclick="TM.markLeave('${person.id}')" ${IS_ONLINE ? "" : "disabled"}>Leave</button>` : ""}
-          ${rec?.checkInAt && !rec?.checkOutAt ? `<button class="btn btn-primary btn-sm" onclick="TM.openCheckout('${person.id}')" ${IS_ONLINE ? "" : "disabled"}>Check Out</button>` : ""}
+        <div class="time-meta"><span>${rec?.checkInAt ? `Started at <b>${fmtTime(rec.checkInAt)}</b>` : esc(status.label)}</span><span>${esc(isoToLabel(date))}</span></div>
+        <div class="time-clock">${formatDuration(netMins)}</div>
+        <div class="time-actions">
+          ${!rec || (!rec.checkInAt && !rec.checkOutAt && !["leave", "off", "leave-approved"].includes(rec.status)) ? `<button class="btn btn-success" onclick="TM.checkIn('${person.id}')" ${IS_ONLINE ? "" : "disabled"}>Clock In</button><button class="btn btn-warn" onclick="TM.markLeave('${person.id}')" ${IS_ONLINE ? "" : "disabled"}>Leave</button>` : ""}
+          ${rec?.checkInAt && !rec?.checkOutAt ? `<button class="btn btn-primary" onclick="TM.openCheckout('${person.id}')" ${IS_ONLINE ? "" : "disabled"}>Clock Out</button><button class="btn btn-ghost" onclick="TM.toggleBreak('${person.id}')" ${IS_ONLINE ? "" : "disabled"}>${rec.breakStartAt ? "End Break" : "Take Break"}</button><span class="break-left">Break used<br><b>${breakUsedText}</b></span><span class="break-left">Break time left<br><b>${breakLeftText}</b></span>` : ""}
           ${rec && (rec.checkOutAt || ["leave", "off", "leave-approved"].includes(rec.status)) ? `<span class="badge bd-gray">Recorded</span>` : ""}
-          <button class="btn btn-ghost btn-sm" onclick="TM.openLeaveRequest('${person.id}')">Leave Request</button>
         </div>
+        <div class="time-day">
+          <div class="row between"><strong>Today</strong><em>Total time ${formatDuration(netMins)}</em></div>
+          <div class="time-row"><span>Clock in<br><b>${rec?.checkInAt ? fmtTime(rec.checkInAt) : "--"}</b></span><span>Clock out<br><b>${rec?.checkOutAt ? fmtTime(rec.checkOutAt) : "--"}</b></span><strong>${formatDuration(netMins)}</strong></div>
+        </div>
+        ${rec?.leaveReason || rec?.offReason ? `<p class="warn-text">Reason: ${esc(rec.leaveReason || rec.offReason)}</p>` : ""}
+        <button class="btn btn-ghost btn-sm" onclick="TM.openLeaveRequest('${person.id}')">Leave Request</button>
       </article>`;
     }).join("");
     return `<section class="stack">
@@ -1768,7 +2859,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function renderEntriesTable() {
-    const filters = [["all", "All"], ["paid", "Paid"], ["freeplay", "Freeplay"], ["redeem", "Redeem"]];
+    const filters = [["all", "All"], ["paid", "Paid"], ["freeplay", "Freeplay"], ["redeem", "Redeem"], ["referral", "Referral"]];
     const rows = activeEntries().filter((entry) => S.eFilter === "all" || entry.type === S.eFilter);
     return `<section class="fc" id="entries-host">
       <div class="fc-head">Entries</div>
@@ -1776,19 +2867,21 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         <div class="row">${filters.map(([key, label]) => `<button class="btn btn-sm ${S.eFilter === key ? "btn-primary" : "btn-ghost"}" onclick="TM.setEntryFilter('${key}')">${label}</button>`).join("")}</div>
         <div class="tbl-wrap entries-table">
           <table>
-            <thead><tr><th>#</th><th>Type</th><th>Date</th><th>Agent</th><th>Player Name</th><th>Game ID</th><th>Game Name</th><th>Deposit</th><th>Amount / Credits</th><th>Actions</th></tr></thead>
+            <thead><tr><th>#</th><th>Type</th><th>Date</th><th>Entry Time</th><th>Agent</th><th>Player ID</th><th>Player Name</th><th>Game ID</th><th>Game Name</th><th>Deposit</th><th>Amount / Credits</th><th>Actions</th></tr></thead>
             <tbody>${rows.map((entry, index) => `<tr>
               <td>${index + 1}</td>
               <td>${entryBadges(entry)}</td>
               <td>${esc(isoToLabel(entry.date))}</td>
+              <td>${esc(fmtDateTime(entry.createdAt))}</td>
               <td>${esc(entry.agent)}</td>
+              <td class="mono">${esc(normalizePlayerCode(entry.playerCode))}</td>
               <td class="trunc">${esc(entry.playerName)}</td>
               <td class="mono">${esc(entry.gameId)}</td>
               <td>${esc(entry.gameName)}</td>
               <td>${moneyCell(entry.deposit)}</td>
-              <td>${entry.type === "paid" ? fmt$(entry.recharge) : entry.type === "freeplay" ? fmt$(entry.fpAmount) : `${fmtPlain(entry.rdCredits)} credits / ${fmt$(entry.cashoutPaid)}`}</td>
+              <td>${entryAmountText(entry)}</td>
               <td><div class="row"><button class="btn btn-xs btn-ghost" onclick="TM.editEntry('${entry.id}')">Edit</button><button class="btn btn-xs btn-danger" onclick="TM.deleteEntry('${entry.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete</button></div></td>
-            </tr>`).join("") || `<tr><td colspan="10" class="empty">No entries yet.</td></tr>`}</tbody>
+            </tr>`).join("") || `<tr><td colspan="12" class="empty">No entries yet.</td></tr>`}</tbody>
           </table>
         </div>
       </div>
@@ -1796,8 +2889,19 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function entryBadges(entry) {
-    const type = entry.type === "paid" ? `<span class="badge bd-cyan">Paid</span>` : entry.type === "freeplay" ? `<span class="badge bd-purple">Freeplay</span>` : `<span class="badge bd-red">Redeem</span>`;
+    const type = entry.type === "paid" ? `<span class="badge bd-cyan">Paid</span>` : entry.type === "freeplay" ? `<span class="badge bd-purple">Freeplay</span>` : entry.type === "referral" ? `<span class="badge bd-warn">Referral</span>` : `<span class="badge bd-red">Redeem</span>`;
     return `${type}${entry.isNewPlayer ? ` <span class="badge bd-green">New</span>` : ""}${entry.dispute ? ` <span class="badge bd-warn">Dispute</span>` : ""}`;
+  }
+
+  function referralBonusText(entry) {
+    return `${fmtPlain(entry.fpAmount || entry.referralBonusAmount)} credits`;
+  }
+
+  function entryAmountText(entry) {
+    if (entry.type === "paid") return fmt$(entry.recharge);
+    if (entry.type === "freeplay") return fmt$(entry.fpAmount);
+    if (entry.type === "referral") return referralBonusText(entry);
+    return `${fmtPlain(entry.rdCredits)} credits / ${fmt$(entry.cashoutPaid)}`;
   }
 
   function entryStatus(entry) {
@@ -1821,7 +2925,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const agentNames = uniqueList((last?.entries || []).map((entry) => entry.agent));
     const agentRows = agentNames.map((agent) => {
       const k = kpisForEntries((last?.entries || []).filter((entry) => entry.agent === agent));
-      return [esc(agent), fmtPlain(k.paidCount), fmt$(k.totalR), fmt$(k.totalDeposit), fmt$(k.totalFP), fmt$(k.totalCashout), fmtPlain(k.newPlayers)];
+      return [esc(agent), fmtPlain(k.paidCount), fmt$(k.totalDeposit), fmt$(k.totalR), fmt$(k.totalFP), fmt$(k.totalCashout), fmtPlain(k.newPlayers)];
     });
     return `<div class="content-scroll">
       <section class="fc closed-panel">
@@ -1831,16 +2935,16 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
           <p class="muted">${esc(s.shiftName || last?.label || "Current Shift")} is locked and archived. Start the next current shift before adding entries.</p>
           <h3>Closed Shift Summary</h3>
           <div class="grid c4">
-            <article class="kpi-card"><span>Paid Recharges</span><strong>${s.paidCount || 0}</strong><small>${fmt$(s.totalR || 0)}</small></article>
+            <article class="kpi-card"><span>Paid Sales</span><strong>${s.paidCount || 0}</strong><small>${fmt$(s.totalDeposit || 0)}</small></article>
             <article class="kpi-card"><span>Total Deposit</span><strong>${fmt$(s.totalDeposit || 0)}</strong><small>Archived Shift</small></article>
             <article class="kpi-card"><span>Freeplay</span><strong>${fmt$(s.totalFP || 0)}</strong><small>Freeplay amount</small></article>
             <article class="kpi-card"><span>Cashouts</span><strong>${fmt$(s.totalCashout || 0)}</strong><small>Cashout paid</small></article>
           </div>
           <p>New Players: <strong>${s.newPlayers || 0}</strong>. Duration: <strong>${formatDuration(s.durationMins || 0)}</strong>.</p>
           <h3>Sales Person Summary</h3>
-          ${simpleTable(["Sales Person", "Paid Recharges", "Sales Amount", "Deposit", "Freeplay", "Cashouts", "New Players"], agentRows)}
+          ${simpleTable(["Sales Person", "Paid Recharges", "Sales Amount", "Coins Given", "Freeplay", "Cashouts", "New Players"], agentRows)}
           ${day ? `<h3>Total Day Summary</h3><div class="grid c4">
-            <article class="kpi-card"><span>Day Sales</span><strong>${fmt$(day.totalR || 0)}</strong><small>${day.paidCount || 0} paid records</small></article>
+            <article class="kpi-card"><span>Day Sales</span><strong>${fmt$(day.totalDeposit || 0)}</strong><small>${day.paidCount || 0} paid records</small></article>
             <article class="kpi-card"><span>Day Deposit</span><strong>${fmt$(day.totalDeposit || 0)}</strong><small>${day.closedShiftCount || 1} shifts</small></article>
             <article class="kpi-card"><span>Day Freeplay</span><strong>${fmt$(day.totalFP || 0)}</strong><small>Total day freeplay</small></article>
             <article class="kpi-card"><span>Day Cashouts</span><strong>${fmt$(day.totalCashout || 0)}</strong><small>Total day cashouts</small></article>
@@ -1859,37 +2963,44 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       ["targets", "Targets"],
       ["pnl", "P&L"],
       ["attendance", "Attendance"],
-      ["shifts", "Shifts"],
-      ["agents", "Agents"],
+      ["team", "People & Roles"],
       ["staff", "Staff & Access"],
-      ["games", "Games"],
-      ["payMethods", "Payment Methods"],
+      ["games", "Games & Game Vendors"],
       ["pages", "Page Names"],
-      ["vendors", "Vendors"],
+      ["vendors", "Payment Vendors"],
+      ["audit", "Audit Log"],
       ["supabase", "Supabase"],
-      ["settings", "Settings"],
+      ["settings", "Theme & Appearance"],
       ["backup", "Backup & Export"]
-    ];
+    ].filter(([key]) => canAdminSection(key));
+    if (!sections.some(([key]) => key === S.adminSection)) S.adminSection = "dashboard";
     return `<div class="admin-shell">
       <aside class="sidebar">${sections.map(([key, label]) => `<button class="btn btn-ghost ${S.adminSection === key ? "active" : ""}" onclick="TM.setAdmin('${key}')">${label}</button>`).join("")}</aside>
       <section class="admin-main">${renderAdminSection()}</section>
     </div>`;
   }
 
+  function renderAdminLocked() {
+    return `<section class="fc" style="margin:24px"><div class="fc-head">Admin Dashboard</div><div class="fg stack"><h2>Admin access required</h2><p class="muted">Sign in with an authorized admin account to continue.</p><button class="btn btn-primary" onclick="TM.openAdminGate()">Admin Login</button></div></section>`;
+  }
+
   function renderAdminSection() {
+    if (!canAdminSection(S.adminSection)) return `<div class="empty">You do not have permission to open this admin section.</div>`;
     switch (S.adminSection) {
       case "transactions": return renderAdminTransactions();
       case "performance": return renderAdminPerformance();
       case "targets": return renderAdminTargets();
       case "pnl": return renderAdminProfitLoss();
       case "attendance": return renderAdminAttendance();
-      case "shifts": return renderAdminShifts();
-      case "agents": return renderAdminAgents();
+      case "team": return renderAdminTeam();
+      case "shifts": return renderAdminTeam();
+      case "agents": return renderAdminTeam();
       case "staff": return renderAdminStaff();
       case "games": return renderAdminGames();
-      case "payMethods": return renderAdminPayMethods();
+      case "payMethods": return renderAdminVendors();
       case "pages": return renderAdminPages();
       case "vendors": return renderAdminVendors();
+      case "audit": return renderAdminAudit();
       case "supabase": return renderAdminSupabase();
       case "settings": return renderAdminSettings();
       case "backup": return renderAdminBackup();
@@ -1908,13 +3019,13 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     return `<div class="stack">
       <section class="fc"><div class="fc-head">Current Shift Live Summary</div><div class="fg grid c5 dashboard-shift-grid">
         <article class="kpi-card"><span>Paid Count</span><strong>${shift.paidCount}</strong><small>Current Shift</small></article>
-        <article class="kpi-card"><span>Sales Amount</span><strong>${fmt$(shift.totalR)}</strong><small>Current Shift</small></article>
+        <article class="kpi-card"><span>Sales Amount</span><strong>${fmt$(shift.totalDeposit)}</strong><small>Current shift deposits</small></article>
         <article class="kpi-card"><span>Players Added</span><strong>${shift.newPlayers}</strong><small>Current Shift</small></article>
         <article class="kpi-card"><span>Cashout</span><strong>${fmt$(shift.totalCashout)}</strong><small>Current Shift</small></article>
         <article class="kpi-card"><span>Freeplay</span><strong>${fmt$(shift.totalFP)}</strong><small>Current Shift</small></article>
       </div></section>
       <section class="grid c4 admin-kpi-grid">
-        <article class="kpi-card"><span>Current Month Sales</span><strong>${fmt$(target.recharge)}</strong><small>${paid.filter((entry) => String(entry.date || "").startsWith(monthKey())).length} records</small></article>
+        <article class="kpi-card"><span>Current Month Sales</span><strong>${fmt$(target.deposit)}</strong><small>${paid.filter((entry) => String(entry.date || "").startsWith(monthKey())).length} records</small></article>
         <article class="kpi-card"><span>Current Month Cashouts</span><strong>${fmt$(redeem.filter((entry) => String(entry.date || "").startsWith(monthKey())).reduce((sum, entry) => sum + num(entry.cashoutPaid), 0))}</strong><small>This Month</small></article>
         <article class="kpi-card"><span>Total Freeplay</span><strong>${fmt$(freeplay.reduce((sum, entry) => sum + num(entry.fpAmount), 0))}</strong><small>${freeplay.length} records</small></article>
         <article class="kpi-card"><span>Cashouts Paid</span><strong>${fmt$(redeem.reduce((sum, entry) => sum + num(entry.cashoutPaid), 0))}</strong><small>${redeem.length} records</small></article>
@@ -1926,6 +3037,25 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       <section class="grid c2">
         <div class="fc dashboard-compact"><div class="fc-head">Game Balances</div><div class="fg">${simpleTable(["Game", "Loaded", "Current"], DB.games.map((game) => [esc(game.name), fmt$(game.backendLoaded), `<span class="${gameBal(game.id) >= 0 ? "success-text" : "danger-text"}">${fmt$(gameBal(game.id))}</span>`]))}</div></div>
         <div class="fc dashboard-compact"><div class="fc-head">Vendor Amount to Receive</div><div class="fg">${renderVendorNetTable()}</div></div>
+      </section>
+    </div>`;
+  }
+
+  function renderShiftNeedsClose() {
+    return `<div class="content-scroll">
+      <section class="fc closed-panel">
+        <div class="fc-head">Previous Shift Still Open</div>
+        <div class="fg stack">
+          <h1 style="margin:0">${esc(activeShiftName())} must be closed</h1>
+          <p class="muted">Current time belongs to ${esc(getCurrentShiftName())}. Close ${esc(activeShiftName())} before adding new entries.</p>
+          <div class="grid c4">
+            <article class="kpi-card"><span>Open Entries</span><strong>${activeEntries().length}</strong><small>Need review before close</small></article>
+            <article class="kpi-card"><span>Sales Amount</span><strong>${fmt$(shiftKPIs().totalDeposit)}</strong><small>Current open shift</small></article>
+        <article class="kpi-card"><span>Coins Given</span><strong>${fmt$(shiftKPIs().totalR + shiftKPIs().totalFP)}</strong><small>Paid and freeplay only</small></article>
+            <article class="kpi-card"><span>Cashout</span><strong>${fmt$(shiftKPIs().totalCashout)}</strong><small>Current open shift</small></article>
+          </div>
+          <div><button class="btn btn-warn" onclick="TM.openCloseShift()" ${IS_ONLINE ? "" : "disabled"}>Close ${esc(activeShiftName())}</button></div>
+        </div>
       </section>
     </div>`;
   }
@@ -1956,8 +3086,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     return `<section class="stack">
       <div class="fc"><div class="fc-head">Team Targets</div><div class="fg stack">
         <div class="grid c4 admin-kpi-grid">
-          <article class="kpi-card"><span>Monthly Team Sales Target</span><strong>${s.salesTarget ? fmt$(s.salesTarget) : "Not Set"}</strong><small>Achieved ${fmt$(s.recharge)}${s.salesTarget ? ` (${s.salesPct}%)` : ""}</small><div class="progress-bar"><i style="width:${s.salesPct}%"></i></div></article>
-          <article class="kpi-card"><span>Sales Target Remaining</span><strong>${fmt$(Math.max(s.salesTarget - s.recharge, 0))}</strong><small>Monthly recharge counts as sales</small></article>
+          <article class="kpi-card"><span>Monthly Team Sales Target</span><strong>${s.salesTarget ? fmt$(s.salesTarget) : "Not Set"}</strong><small>Achieved ${fmt$(s.deposit)}${s.salesTarget ? ` (${s.salesPct}%)` : ""}</small><div class="progress-bar"><i style="width:${s.salesPct}%"></i></div></article>
+          <article class="kpi-card"><span>Sales Target Remaining</span><strong>${fmt$(Math.max(s.salesTarget - s.deposit, 0))}</strong><small>Monthly deposits count as sales</small></article>
           <article class="kpi-card"><span>Monthly New Player Target</span><strong>${s.playersTarget ? fmtPlain(s.playersTarget) : "Not Set"}</strong><small>Achieved ${fmtPlain(s.newPlayers)}${s.playersTarget ? ` (${s.playersPct}%)` : ""}</small><div class="progress-bar"><i style="width:${s.playersPct}%"></i></div></article>
           <article class="kpi-card"><span>New Player Target Remaining</span><strong>${fmtPlain(Math.max(s.playersTarget - s.newPlayers, 0))}</strong><small>Current month</small></article>
         </div>
@@ -2003,34 +3133,35 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         <div class="grid c4 admin-kpi-grid">
           <article class="kpi-card"><span>Sales Amount</span><strong>${fmt$(summary.sales)}</strong><small>${summary.paidCount} paid transactions</small></article>
           <article class="kpi-card"><span>Gateway Fees</span><strong>${fmt$(summary.gatewayFees)}</strong><small>Payment vendor fee</small></article>
-          <article class="kpi-card"><span>Coins Issued Cost</span><strong>${fmt$(summary.coinCost)}</strong><small>Paid and freeplay credits</small></article>
+          <article class="kpi-card"><span>Coins Issued Cost</span><strong>${fmt$(summary.coinCost)}</strong><small>Paid, freeplay, and referral credits separated in details</small></article>
           <article class="kpi-card"><span>Redeemed Credits Value</span><strong>${fmt$(summary.redeemedValue)}</strong><small>${summary.noCashoutRedeemCount} without cashout</small></article>
           <article class="kpi-card"><span>Cashouts Paid</span><strong>${fmt$(summary.cashouts)}</strong><small>${summary.redeemCount} redeem records</small></article>
           <article class="kpi-card"><span>Estimated Margin</span><strong class="${summary.margin >= 0 ? "success-text" : "danger-text"}">${fmt$(summary.margin)}</strong><small>${fmtPlain(summary.marginPct)}% margin</small></article>
         </div>
       </div></div>
       <div class="fc"><div class="fc-head">Game Profit and Loss</div><div class="fg">${simpleTable(["Game", "Paid Transactions", "Sales Amount", "Gateway Fees", "Coins Issued Cost", "Redeemed Credits Value", "Cashouts Paid", "Estimated Margin", "Margin Percentage"], gameRows)}</div></div>
-      <div class="fc"><div class="fc-head">Transaction Cost Detail</div><div class="fg">${simpleTable(["Date", "Type", "Sales Person", "Player Name", "Game Name", "Sales Amount", "Gateway Fee", "Coins Issued Cost", "Redeemed Credits Value", "Cashout Paid", "Margin"], rows.map((entry) => {
-        const sales = entry.type === "paid" ? num(entry.recharge) : 0;
+      <div class="fc"><div class="fc-head">Transaction Cost Detail</div><div class="fg">${simpleTable(["Date", "Type", "Sales Person", "Player ID", "Player Name", "Game Name", "Sales Amount", "Gateway Fee", "Coins Issued Cost", "Redeemed Credits Value", "Cashout Paid", "Margin"], rows.map((entry) => {
+        const sales = entry.type === "paid" ? num(entry.deposit) : 0;
         const cost = entryCoinCost(entry);
         const gateway = entryGatewayFee(entry);
         const redeemed = entryRedeemValue(entry);
         const cashout = entry.type === "redeem" ? num(entry.cashoutPaid) : 0;
         const margin = sales - gateway - cost - redeemed - cashout;
-        return [esc(isoToLabel(entry.date)), entryBadges(entry), esc(entry.agent), esc(entry.playerName), esc(entry.gameName), fmt$(sales), fmt$(gateway), fmt$(cost), fmt$(redeemed), fmt$(cashout), `<span class="${margin >= 0 ? "success-text" : "danger-text"}">${fmt$(margin)}</span>`];
+        return [esc(isoToLabel(entry.date)), entryBadges(entry), esc(entry.agent), esc(normalizePlayerCode(entry.playerCode)), esc(entry.playerName), esc(entry.gameName), fmt$(sales), fmt$(gateway), fmt$(cost), fmt$(redeemed), fmt$(cashout), `<span class="${margin >= 0 ? "success-text" : "danger-text"}">${fmt$(margin)}</span>`];
       }))}</div></div>
     </section>`;
   }
 
   function simpleTable(heads, rows) {
-    return `<div class="tbl-wrap"><table><thead><tr>${heads.map((head) => `<th>${esc(head)}</th>`).join("")}</tr></thead><tbody>${rows.length ? rows.map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`).join("") : `<tr><td colspan="${heads.length}" class="empty">No records.</td></tr>`}</tbody></table></div>`;
+    const compact = heads.length <= 5 ? " compact-table" : "";
+    return `<div class="tbl-wrap${compact}"><table><thead><tr>${heads.map((head) => `<th>${esc(head)}</th>`).join("")}</tr></thead><tbody>${rows.length ? rows.map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`).join("") : `<tr><td colspan="${heads.length}" class="empty">No records.</td></tr>`}</tbody></table></div>`;
   }
 
   function filteredTransactions() {
     let rows = allEntries();
     const search = S.txSearch.trim().toLowerCase();
     if (search) {
-      rows = rows.filter((entry) => [entry.playerName, entry.agent, entry.gameId, entry.gameName, entry.custTag, entry.legalName].some((value) => String(value || "").toLowerCase().includes(search)));
+      rows = rows.filter((entry) => [entry.playerCode, entry.playerName, entry.agent, entry.gameId, entry.gameName, entry.custTag, entry.legalName].some((value) => String(value || "").toLowerCase().includes(search)));
     }
     if (S.txType !== "all") rows = rows.filter((entry) => entry.type === S.txType);
     if (S.txAgent) rows = rows.filter((entry) => entry.agent === S.txAgent);
@@ -2058,26 +3189,26 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     return `<div class="fc"><div class="fc-head">Transactions</div><div class="fg stack">
       <div class="grid c4">
         ${field("Search", textInput("tx-search", S.txSearch, "TM.setS('txSearch', this.value, false)"))}
-        ${field("Type", selectInput("tx-type", [["all", "All"], ["paid", "Paid"], ["freeplay", "Freeplay"], ["redeem", "Redeem"]], S.txType, "TM.setS('txType', this.value)"))}
+          ${field("Type", selectInput("tx-type", [["all", "All"], ["paid", "Paid"], ["freeplay", "Freeplay"], ["redeem", "Redeem"], ["referral", "Referral"]], S.txType, "TM.setS('txType', this.value)"))}
         ${field("Sales Person", selectInput("tx-agent", [["", "All Sales People"], ...salesPeople().map((person) => [person.name, person.name])], S.txAgent, "TM.setS('txAgent', this.value)"))}
         ${field("Game", selectInput("tx-game", [["", "All Games"], ...DB.games.map((game) => [game.name, game.name])], S.txGame, "TM.setS('txGame', this.value)"))}
         ${field("Shift", selectInput("tx-shift", [["", "All Shifts"], ...DB.shifts.map((shift) => [shift.name, shift.name])], S.txShift, "TM.setS('txShift', this.value)"))}
         ${field("Start Date", dateInput("tx-start-date", S.txStartDate, "TM.setS('txStartDate', this.value)"))}
         ${field("End Date", dateInput("tx-end-date", S.txEndDate, "TM.setS('txEndDate', this.value)"))}
         ${field("Sort", selectInput("tx-sort", [["newest", "Newest First"], ["oldest", "Oldest First"], ["depositDown", "Deposit Down"], ["depositUp", "Deposit Up"], ["player", "Player A-Z"], ["agent", "Agent A-Z"]], S.txSort, "TM.setS('txSort', this.value)"))}
-        <div class="row end"><button class="btn btn-primary" onclick="TM.renderNow()">Apply Filters</button><button class="btn btn-ghost" onclick="TM.clearTransactions()">Clear</button></div>
+        <div class="row end"><button class="btn btn-primary" onclick="TM.renderNow()">Apply Filters</button><button class="btn btn-ghost" onclick="TM.clearTransactions()">Clear</button><button class="btn btn-success" onclick="TM.exportTransactionsExcel()">Export Excel</button></div>
       </div>
       <p class="muted">${rows.length} records. Total deposit ${fmt$(totalDeposit)}. Total recharge ${fmt$(totalRecharge)}. Total cashout ${fmt$(totalCashout)}.</p>
       ${renderPlayerLookupPanel()}
-      <div class="tbl-wrap"><table><thead><tr><th>#</th><th>Type</th><th>Session</th><th>Date</th><th>Sales Person</th><th>Player Name</th><th>Game ID</th><th>Game Name</th><th>Deposit</th><th>Amount / Credits</th><th>Cashout Paid</th><th>Status</th><th>Actions</th></tr></thead><tbody>
-      ${rows.map((entry, index) => `<tr class="${entry.dispute ? "dispute-row" : ""}"><td>${index + 1}</td><td>${entryBadges(entry)}</td><td>${esc(entry.shiftSession || "Current")}</td><td>${esc(isoToLabel(entry.date))}</td><td>${esc(entry.agent)}</td><td>${esc(entry.playerName)}</td><td class="mono">${esc(entry.gameId)}</td><td>${esc(entry.gameName)}</td><td>${fmt$(entry.deposit)}</td><td>${entry.type === "paid" ? fmt$(entry.recharge) : entry.type === "freeplay" ? fmt$(entry.fpAmount) : `${fmtPlain(entry.rdCredits)} credits`}</td><td>${fmt$(entry.cashoutPaid)}</td><td>${entryStatus(entry)}</td><td><div class="row"><button class="btn btn-xs btn-ghost" onclick="TM.editEntry('${entry.id}')">Edit</button><button class="btn btn-xs btn-danger" onclick="TM.deleteEntry('${entry.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete</button></div></td></tr>`).join("") || `<tr><td colspan="13" class="empty">No transactions match these filters.</td></tr>`}
+      <div class="tbl-wrap"><table><thead><tr><th>#</th><th>Type</th><th>Session</th><th>Date</th><th>Entry Time</th><th>Sales Person</th><th>Player ID</th><th>Player Name</th><th>Game ID</th><th>Game Name</th><th>Deposit</th><th>Amount / Credits</th><th>Cashout Paid</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+      ${rows.map((entry, index) => `<tr class="${entry.dispute ? "dispute-row" : ""}"><td>${index + 1}</td><td>${entryBadges(entry)}</td><td>${esc(entry.shiftSession || "Current")}</td><td>${esc(isoToLabel(entry.date))}</td><td>${esc(fmtDateTime(entry.createdAt))}</td><td>${esc(entry.agent)}</td><td class="mono">${esc(normalizePlayerCode(entry.playerCode))}</td><td>${esc(entry.playerName)}</td><td class="mono">${esc(entry.gameId)}</td><td>${esc(entry.gameName)}</td><td>${fmt$(entry.deposit)}</td><td>${entryAmountText(entry)}</td><td>${fmt$(entry.cashoutPaid)}</td><td>${entryStatus(entry)}</td><td><div class="row"><button class="btn btn-xs btn-ghost" onclick="TM.editEntry('${entry.id}')">Edit</button><button class="btn btn-xs btn-danger" onclick="TM.deleteEntry('${entry.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete</button></div></td></tr>`).join("") || `<tr><td colspan="15" class="empty">No transactions match these filters.</td></tr>`}
       </tbody></table></div>
     </div></div>`;
   }
 
   function renderPlayerLookupPanel() {
     const query = S.txPlayerLookup.trim().toLowerCase();
-    const rows = query ? allEntries().filter((entry) => [entry.playerName, entry.gameId, entry.legalName, entry.contact, entry.email].some((value) => String(value || "").toLowerCase().includes(query))) : [];
+    const rows = query ? allEntries().filter((entry) => [entry.playerCode, entry.playerName, entry.gameId, entry.legalName].some((value) => String(value || "").toLowerCase().includes(query))) : [];
     const month = monthKey();
     const monthly = rows.filter((entry) => String(entry.date || "").startsWith(month));
     const stat = (list, type, key) => list.filter((entry) => !type || entry.type === type).reduce((sum, entry) => sum + num(entry[key]), 0);
@@ -2087,18 +3218,18 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     }, 0);
     return `<section class="fc player-lookup"><div class="fc-head">Player Lookup</div><div class="fg stack">
       <div class="grid c3">
-        ${field("Search Player, Game ID, Legal Name, Contact, or Email", `<input value="${esc(S.txPlayerLookup)}" oninput="TM.setS('txPlayerLookup', this.value, false)" placeholder="Search one player">`)}
+        ${field("Search Player ID, Game ID, or Legal Name", `<input value="${esc(S.txPlayerLookup)}" oninput="TM.setS('txPlayerLookup', this.value, false)" placeholder="Search one player">`)}
         <div class="row end"><button class="btn btn-primary" onclick="TM.renderNow()">Search Player</button><button class="btn btn-ghost" onclick="TM.clearPlayerLookup()">Clear</button></div>
       </div>
       ${query ? `<div class="grid c4">
-        <article class="kpi-card"><span>All-Time Sales</span><strong>${fmt$(stat(rows, "paid", "recharge"))}</strong><small>${rows.filter((entry) => entry.type === "paid").length} paid records</small></article>
-        <article class="kpi-card"><span>All-Time Deposit</span><strong>${fmt$(stat(rows, "paid", "deposit"))}</strong><small>Money received</small></article>
-        <article class="kpi-card"><span>Monthly Sales</span><strong>${fmt$(stat(monthly, "paid", "recharge"))}</strong><small>Current month</small></article>
-        <article class="kpi-card"><span>Monthly Deposit</span><strong>${fmt$(stat(monthly, "paid", "deposit"))}</strong><small>Current month</small></article>
+        <article class="kpi-card"><span>All-Time Sales</span><strong>${fmt$(stat(rows, "paid", "deposit"))}</strong><small>Money received</small></article>
+        <article class="kpi-card"><span>All-Time Coins Given</span><strong>${fmt$(stat(rows, "paid", "recharge"))}</strong><small>${rows.filter((entry) => entry.type === "paid").length} paid records</small></article>
+        <article class="kpi-card"><span>Monthly Sales</span><strong>${fmt$(stat(monthly, "paid", "deposit"))}</strong><small>Current month deposits</small></article>
+        <article class="kpi-card"><span>Monthly Coins Given</span><strong>${fmt$(stat(monthly, "paid", "recharge"))}</strong><small>Current month</small></article>
         <article class="kpi-card"><span>Cashouts Paid</span><strong>${fmt$(stat(rows, "redeem", "cashoutPaid"))}</strong><small>All Time</small></article>
         <article class="kpi-card"><span>Redeem Credits</span><strong>${fmtPlain(stat(rows, "redeem", "rdCredits"))}</strong><small>Credits given</small></article>
         <article class="kpi-card"><span>Credits Given Cost</span><strong>${fmt$(creditsCost)}</strong><small>Based on game price per 1000 credits</small></article>
-      </div>` : `<p class="muted">Search a player to see all-time and monthly sales, cashouts, redeem credits, and estimated credit cost.</p>`}
+      </div>` : `<p class="muted">Search a player to see all-time and monthly sales, coins given, cashouts, redeem credits, and estimated credit cost.</p>`}
     </div></section>`;
   }
 
@@ -2189,8 +3320,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
           ${field("Status", selectInput("af-status", [["all", "All"], ["present", "Present"], ["completed", "Completed"], ["leave", "Leave"], ["off", "Scheduled Off"], ["absent", "Absent"]], S.afStatus, "TM.setS('afStatus', this.value)"))}
           <div class="row end"><button class="btn btn-primary" onclick="TM.renderNow()">Apply Filters</button><button class="btn btn-ghost" onclick="TM.clearAttendanceFilters()">Clear</button><button class="btn btn-success" onclick="TM.exportAttendance()">Export Comma Separated Values</button></div>
         </div>
-        <div class="tbl-wrap"><table><thead><tr><th>Employee</th><th>Date</th><th>Status</th><th>Check In Time</th><th>Check Out Time</th><th>Hours Worked</th><th>Leave Reason</th><th>Actions</th></tr></thead><tbody>
-          ${rows.map((record) => `<tr><td>${esc(record.agentName)}</td><td>${esc(isoToLabel(record.date))}</td><td>${attendanceBadge(record)}</td><td>${record.checkInAt ? fmtTime(record.checkInAt) : ""}</td><td>${record.checkOutAt ? fmtTime(record.checkOutAt) : ""}</td><td>${formatDuration(record.duration)}</td><td>${esc(record.leaveReason || record.offReason || "")}</td><td><div class="row"><button class="btn btn-xs btn-ghost" onclick="TM.correctAttendance('${record.id}')">Edit</button><button class="btn btn-xs btn-danger" onclick="TM.deleteAttendance('${record.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete</button></div></td></tr>`).join("") || `<tr><td colspan="8" class="empty">No attendance records.</td></tr>`}
+        <div class="tbl-wrap"><table><thead><tr><th>Employee</th><th>Date</th><th>Status</th><th>Check In Time</th><th>Check Out Time</th><th>Break</th><th>Hours Worked</th><th>Leave Reason</th><th>Actions</th></tr></thead><tbody>
+          ${rows.map((record) => `<tr><td>${esc(record.agentName)}</td><td>${esc(isoToLabel(record.date))}</td><td>${attendanceBadge(record)}</td><td>${record.checkInAt ? fmtTime(record.checkInAt) : ""}</td><td>${record.checkOutAt ? fmtTime(record.checkOutAt) : ""}</td><td>${fmtPlain(record.breakMins || 0)} min</td><td>${formatDuration(record.duration)}</td><td>${esc(record.leaveReason || record.offReason || "")}</td><td><div class="row"><button class="btn btn-xs btn-ghost" onclick="TM.correctAttendance('${record.id}')">Edit</button><button class="btn btn-xs btn-danger" onclick="TM.deleteAttendance('${record.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete</button></div></td></tr>`).join("") || `<tr><td colspan="9" class="empty">No attendance records.</td></tr>`}
         </tbody></table></div>
       </div></div>
     </section>`;
@@ -2317,7 +3448,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function renderAdminShifts() {
     return `<section class="fc"><div class="fc-head">Shifts</div><div class="fg stack">
       <div class="row end"><button class="btn btn-primary" onclick="TM.openModal('addShift')" ${IS_ONLINE ? "" : "disabled"}>Add Shift</button></div>
-      ${simpleTable(["Name", "Start", "End", "Actions"], DB.shifts.map((shift) => [esc(shift.name), esc(shift.start), esc(shift.end), `<button class="btn btn-xs btn-danger" onclick="TM.deleteShift('${shift.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete</button>`]))}
+      ${simpleTable(["Name", "Start", "End", "Duration", "Actions"], DB.shifts.map((shift) => [esc(shift.name), esc(shift.start), esc(shift.end), esc(shiftDurationLabel(shift)), `<button class="btn btn-xs btn-danger" onclick="TM.deleteShift('${shift.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete</button>`]))}
     </div></section>`;
   }
 
@@ -2330,6 +3461,32 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     </div></section>`;
   }
 
+  function renderAdminTeam() {
+    const roleRows = DB.agentRoles.map((role) => [
+      esc(roleName(role)),
+      DB.agents.filter((agent) => agent.role === role).length,
+      `<button class="btn btn-xs btn-danger" onclick="TM.deleteAgentRole('${esc(role)}')" ${IS_ONLINE ? "" : "disabled"}>Delete</button>`
+    ]);
+    return `<section class="stack">
+      <div class="grid c2">
+        <div class="fc"><div class="fc-head">Schedules</div><div class="fg stack">
+          <div class="row end"><button class="btn btn-primary" onclick="TM.openModal('addShift')" ${IS_ONLINE ? "" : "disabled"}>Add Schedule</button></div>
+          ${simpleTable(["Name", "Start", "End", "Duration", "Actions"], DB.shifts.map((shift) => [esc(shift.name), esc(shift.start), esc(shift.end), esc(shiftDurationLabel(shift)), `<button class="btn btn-xs btn-danger" onclick="TM.deleteShift('${shift.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete</button>`]))}
+        </div></div>
+        <div class="fc"><div class="fc-head">Roles</div><div class="fg stack">
+          ${simpleTable(["Role", "Agents", "Actions"], roleRows)}
+          <div class="row"><input id="new-agent-role" placeholder="Role name"><button class="btn btn-primary" onclick="TM.addAgentRole()" ${IS_ONLINE ? "" : "disabled"}>Add Role</button></div>
+        </div></div>
+      </div>
+      <div class="fc"><div class="fc-head">Agents</div><div class="fg stack">
+        <div class="row end"><button class="btn btn-primary" onclick="TM.openModal('addAgent')" ${IS_ONLINE ? "" : "disabled"}>Add Agent</button></div>
+        <div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Role</th><th>Schedule</th><th>Attendance Required</th><th>Show Name in Sales Forms</th><th>Monthly New Player Target</th><th>Monthly Sales Target</th><th>Color</th><th>Actions</th></tr></thead><tbody>
+        ${DB.agents.map((agent) => `<tr><td>${esc(agent.name)}</td><td><span class="badge bd-gray">${esc(roleName(agent.role || "agent"))}</span></td><td>${esc(shiftById(agent.shiftId)?.name || "")}</td><td>${yesNoBadge(agent.attendanceRequired !== false)}</td><td>${yesNoBadge(agent.showInDeposits !== false)}</td><td>${fmtPlain(agent.targets?.newPlayers || 0)}</td><td>${fmt$(agent.targets?.deposit || 0)}</td><td><span class="dot on" style="background:${esc(agent.color)}"></span></td><td><div class="row"><button class="btn btn-xs btn-ghost" onclick="TM.openAgentEdit('${agent.id}')" ${IS_ONLINE ? "" : "disabled"}>Edit</button><button class="btn btn-xs btn-danger" onclick="TM.deleteAgent('${agent.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete</button></div></td></tr>`).join("") || `<tr><td colspan="9" class="empty">No agents.</td></tr>`}
+        </tbody></table></div>
+      </div></div>
+    </section>`;
+  }
+
   function renderAdminStaff() {
     return `<section class="stack">
       <div class="fc"><div class="fc-head">Staff & Access</div><div class="fg stack">
@@ -2340,6 +3497,19 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       </div></div>
       <div class="fc"><div class="fc-head">Role Defaults Reference</div><div class="fg grid c2">
         ${Object.entries(ROLE_DEFAULTS).map(([role, perms]) => `<article class="balance-card"><strong>${esc(roleName(role))}</strong><p class="muted">${perms.join(", ")}</p></article>`).join("")}
+      </div></div>
+      <div class="fc"><div class="fc-head">Authorization Code</div><div class="fg stack">
+        ${field("Authorization Code", `<input id="override-code" type="password" autocomplete="new-password" value="${esc(DB.overrideCode)}">`)}
+        <div class="row"><button class="btn btn-primary" onclick="TM.saveOverrideCode()" ${IS_ONLINE ? "" : "disabled"}>Save Code</button><span id="code-save-msg" class="success-text"></span></div>
+      </div></div>
+      <div class="fc"><div class="fc-head">Shift Repair Override</div><div class="fg stack">
+        <div class="notice warn">Use only when shift timing or duplicate-close protection leaves the CRM stuck. These actions are audited.</div>
+        <div class="grid c3">
+          ${field("Active Shift Now", selectInput("repair-active-shift", shiftOptions(), DB.activeShiftName || getCurrentShiftName()))}
+          ${field("Repair Date", dateInput("repair-date", todayISO(), ""))}
+          ${field("Force Close Shift", selectInput("repair-close-shift", shiftOptions(), DB.activeShiftName || getCurrentShiftName()))}
+        </div>
+        <div class="row"><button class="btn btn-primary" onclick="TM.adminSetActiveShift()" ${IS_ONLINE ? "" : "disabled"}>Set Active Shift</button><button class="btn btn-warn" onclick="TM.adminForceCloseShift()" ${IS_ONLINE ? "" : "disabled"}>Force Close Selected Shift</button></div>
       </div></div>
     </section>`;
   }
@@ -2358,18 +3528,39 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function renderAdminGames() {
-    return `<section class="fc"><div class="fc-head">Games</div><div class="fg stack">
-      <div class="row end"><button class="btn btn-primary" onclick="TM.openModal('addGame')" ${IS_ONLINE ? "" : "disabled"}>Add Game</button></div>
-      <div class="tbl-wrap"><table><thead><tr><th>Game Name</th><th>Game Vendor</th><th>Backend Loaded</th><th>Current Balance</th><th>Price per 1000 Credits</th><th>Backend Link</th><th>Player Link</th><th>Username</th><th>Password</th><th>Actions</th></tr></thead><tbody>
-      ${DB.games.map((game) => S.editGameId === game.id ? renderGameEditRow(game) : renderGameRow(game)).join("")}
-      </tbody></table></div>
-    </div></section>`;
+    const selectedGameVendor = DB.gameVendors.find((vendor) => vendor.id === S.selectedGameVendorId) || DB.gameVendors[0];
+    const vendorRows = DB.gameVendors.map((vendor) => {
+      const games = DB.games.filter((game) => game.gameVendorId === vendor.id);
+      const active = selectedGameVendor?.id === vendor.id;
+      return [
+        `<button class="link-btn ${active ? "active-link" : ""}" onclick="TM.selectGameVendor('${vendor.id}')">${esc(vendor.name)}</button>`,
+        esc(vendor.contactPerson || "Not Set"),
+        esc(vendor.phone || "Not Set"),
+        fmtPlain(games.length),
+        games.length ? games.map((game) => esc(game.name)).join(", ") : `<span class="muted">No games assigned</span>`
+      ];
+    });
+    const unassignedGames = DB.games.filter((game) => !game.gameVendorId);
+    return `<section class="stack">
+      <div class="fc"><div class="fc-head">Games</div><div class="fg stack">
+        <div class="row end"><button class="btn btn-primary" onclick="TM.openModal('addGame')" ${IS_ONLINE ? "" : "disabled"}>Add Game</button></div>
+        <div class="tbl-wrap"><table><thead><tr><th>Game Name</th><th>Game Vendor</th><th>Backend Loaded</th><th>Current Balance</th><th>Price per 1000 Credits</th><th>Backend Link</th><th>Player Link</th><th>Username</th><th>Password</th><th>Actions</th></tr></thead><tbody>
+        ${DB.games.map((game) => S.editGameId === game.id ? renderGameEditRow(game) : renderGameRow(game)).join("")}
+        </tbody></table></div>
+      </div></div>
+      <div class="fc"><div class="fc-head">Game Vendors</div><div class="fg stack">
+        <div class="row end"><button class="btn btn-primary" onclick="TM.openModal('gameVendor')" ${IS_ONLINE ? "" : "disabled"}>Add Game Vendor</button></div>
+        ${simpleTable(["Vendor", "Contact Person", "Phone", "Games", "Assigned Game Names"], vendorRows)}
+        ${selectedGameVendor ? renderGameVendorDetail(selectedGameVendor) : `<div class="empty">No game vendors yet.</div>`}
+        ${unassignedGames.length ? `<article class="vendor-detail stack"><strong>Unassigned Games</strong>${simpleTable(["Game", "Backend Loaded", "Current Balance", "Price / 1000"], unassignedGames.map((game) => [esc(game.name), fmt$(game.backendLoaded), fmt$(gameBal(game.id)), fmt$(game.pricePer1k)]))}</article>` : ""}
+      </div></div>
+    </section>`;
   }
 
   function renderGameRow(game) {
     const vendor = DB.gameVendors.find((item) => item.id === game.gameVendorId);
     const current = gameBal(game.id);
-    return `<tr><td>${esc(game.name)}</td><td><span class="badge bd-purple">${esc(vendor?.name || "Unassigned")}</span></td><td>${fmt$(game.backendLoaded)}</td><td><span class="${current >= 0 ? "success-text" : "danger-text"}">${fmt$(current)}</span></td><td>${fmt$(game.pricePer1k)}</td><td>${linkCell(game.backendLink)}</td><td>${linkCell(game.playerLink)}</td><td>${esc(game.username)}</td><td>${esc(game.password)}</td><td><div class="row"><button class="btn btn-xs btn-success" onclick="TM.topUpGame('${game.id}')" ${IS_ONLINE ? "" : "disabled"}>Top-up Backend</button><button class="btn btn-xs btn-warn" onclick="TM.setGameBalance('${game.id}')" ${IS_ONLINE ? "" : "disabled"}>Set Balance</button><button class="btn btn-xs btn-ghost" onclick="TM.editGame('${game.id}')">Edit</button><button class="btn btn-xs btn-danger" onclick="TM.deleteGame('${game.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete</button></div></td></tr>`;
+    return `<tr><td>${esc(game.name)}</td><td><span class="badge bd-purple">${esc(vendor?.name || "Unassigned")}</span></td><td>${fmt$(game.backendLoaded)}</td><td><span class="${current >= 0 ? "success-text" : "danger-text"}">${fmt$(current)}</span></td><td>${fmt$(game.pricePer1k)}</td><td>${linkCell(game.backendLink)}</td><td>${linkCell(game.playerLink)}</td><td>${esc(game.username)}</td><td>${esc(game.password)}</td><td><div class="row"><button class="btn btn-xs btn-success" onclick="TM.topUpGame('${game.id}')" ${IS_ONLINE ? "" : "disabled"}>Top-up Backend</button><button class="btn btn-xs btn-ghost" onclick="TM.editGame('${game.id}')">Edit</button><button class="btn btn-xs btn-danger" onclick="TM.deleteGame('${game.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete</button></div></td></tr>`;
   }
 
   function linkCell(link) {
@@ -2406,7 +3597,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function renderVendorNetTable() {
-    const rows = DB.payVendors.map((vendor) => {
+    const rows = DB.payVendors.filter((vendor) => !vendor.archived).map((vendor) => {
       const totals = vendorTotals(vendor);
       return [esc(vendor.name), fmt$(totals.deposits), fmt$(totals.fees), fmt$(totals.paid), fmt$(totals.deductions), `<strong class="${totals.pending >= 0 ? "success-text" : "danger-text"}">${fmt$(totals.pending)}</strong>`];
     });
@@ -2428,6 +3619,12 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     return { deposits, fees, net, paid, deductions, pending };
   }
 
+  function vendorFeeDeposits(fee) {
+    return allEntries()
+      .filter((entry) => entry.type === "paid" && entry.payMethodId === fee.payMethodId && (!fee.payTag || entry.payTagLabel === fee.payTag))
+      .reduce((sum, entry) => sum + num(entry.deposit), 0);
+  }
+
   function vendorDeductions(vendor) {
     return (vendor.deductions || []).reduce((sum, item) => sum + num(item.amount), 0);
   }
@@ -2443,7 +3640,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function renderVendorPaymentsDashboard() {
-    const rows = DB.payVendors.map((vendor) => {
+    const rows = DB.payVendors.filter((vendor) => !vendor.archived).map((vendor) => {
       const totals = vendorTotals(vendor);
       return [
         esc(vendor.name),
@@ -2451,13 +3648,12 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         fmt$(totals.fees),
         fmt$(totals.deductions),
         fmt$(totals.paid),
-        `<strong class="${totals.pending >= 0 ? "success-text" : "danger-text"}">${fmt$(totals.pending)}</strong>`,
-        `<div class="row"><button class="btn btn-xs btn-success" onclick="TM.recordVendorPayment('${vendor.id}')" ${IS_ONLINE ? "" : "disabled"}>Record Payment</button><button class="btn btn-xs btn-warn" onclick="TM.addVendorDeduction('${vendor.id}')" ${IS_ONLINE ? "" : "disabled"}>Add Deduction</button><button class="btn btn-xs btn-ghost" onclick="TM.viewVendorPaymentHistory('${vendor.id}')">View History</button></div>`
+        `<strong class="${totals.pending >= 0 ? "success-text" : "danger-text"}">${fmt$(totals.pending)}</strong>`
       ];
     });
     return `<div class="fc dashboard-compact"><div class="fc-head">Vendor Payments Dashboard</div><div class="fg stack">
       <p class="muted">Track amount to receive from each payment vendor after gateway fees, payments received, and disputes or deductions.</p>
-      ${simpleTable(["Vendor", "Deposits", "Fee Deducted", "Disputes / Deductions", "Paid Received", "Pending Amount", "Actions"], rows)}
+      ${simpleTable(["Vendor", "Deposits", "Fee Deducted", "Disputes / Deductions", "Paid Received", "Pending Amount"], rows)}
     </div></div>`;
   }
 
@@ -2501,36 +3697,63 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function renderAdminVendors() {
-    const section = S.vendorSection || "payment";
+    const archived = S.payMethodSection === "archived";
+    const visibleVendors = DB.payVendors.filter((vendor) => archived ? vendor.archived : !vendor.archived);
+    const selectedPayVendor = visibleVendors.find((vendor) => vendor.id === S.selectedPayVendorId) || visibleVendors[0];
+    const paymentRows = visibleVendors.map((vendor) => {
+      const totals = vendorTotals(vendor);
+      const active = selectedPayVendor?.id === vendor.id;
+      return [
+        `<button class="link-btn ${active ? "active-link" : ""}" onclick="TM.selectPayVendor('${vendor.id}')">${esc(vendor.name)}</button>`,
+        vendor.archived ? `<span class="badge bd-gray">Archived</span>` : `<span class="badge bd-green">Active</span>`,
+        esc(vendor.contactPerson || "Not Set"),
+        esc(vendor.phone || "Not Set"),
+        fmtPlain((vendor.fees || []).length),
+        fmt$(totals.deposits),
+        `<strong class="${totals.pending >= 0 ? "success-text" : "danger-text"}">${fmt$(totals.pending)}</strong>`
+      ];
+    });
     const paymentSection = `<div class="stack">
       ${renderVendorPaymentsDashboard()}
       <div class="fc"><div class="fc-head">Payment Vendors</div><div class="fg stack">
-        <div class="row end"><button class="btn btn-primary" onclick="TM.openModal('payVendor')" ${IS_ONLINE ? "" : "disabled"}>Add Payment Vendor</button></div>
-        ${DB.payVendors.map((vendor) => {
-          const totals = vendorTotals(vendor);
-          return `<article class="balance-card"><div class="row between"><strong>${esc(vendor.name)}</strong><button class="btn btn-xs btn-danger" onclick="TM.deletePayVendor('${vendor.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete Vendor</button></div>
-            <div class="tbl-wrap"><table><thead><tr><th>Method</th><th>Pay Tag</th><th>Fee Percentage</th><th>Deposits Received</th><th>Fee Amount</th><th>Gross Amount to Receive</th><th>Actions</th></tr></thead><tbody>
-            ${vendor.fees.map((fee) => {
-              const deposits = allEntries().filter((entry) => entry.type === "paid" && entry.payMethodId === fee.payMethodId && (!fee.payTag || entry.payTagLabel === fee.payTag)).reduce((sum, entry) => sum + num(entry.deposit), 0);
-              const feeAmount = deposits * num(fee.fee) / 100;
-              const editing = S.editVendorFeeId === fee.id;
-              return `<tr><td>${esc(DB.payMethods.find((method) => method.id === fee.payMethodId)?.name || "")}</td><td>${esc(fee.payTag)}</td><td>${editing ? `<input id="edit-fee-${fee.id}" type="number" value="${esc(fee.fee)}">` : `${fmtPlain(fee.fee)}%`}</td><td>${fmt$(deposits)}</td><td>${fmt$(feeAmount)}</td><td><strong>${fmt$(deposits - feeAmount)}</strong></td><td><div class="row">${editing ? `<button class="btn btn-xs btn-success" onclick="TM.saveVendorFeeEdit('${vendor.id}','${fee.id}')" ${IS_ONLINE ? "" : "disabled"}>Save</button><button class="btn btn-xs btn-ghost" onclick="TM.cancelVendorFeeEdit()">Cancel</button>` : `<button class="btn btn-xs btn-ghost" onclick="TM.editVendorFee('${fee.id}')">Edit</button><button class="btn btn-xs btn-danger" onclick="TM.deleteVendorFee('${vendor.id}','${fee.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete</button>`}</div></td></tr>`;
-            }).join("") || `<tr><td colspan="7" class="empty">No fee rows.</td></tr>`}
-            </tbody></table></div>
-            <div class="vendor-total-row"><span>Total Deposits ${fmt$(totals.deposits)}</span><span>Total Fees ${fmt$(totals.fees)}</span><span>Paid Received ${fmt$(totals.paid)}</span><span>Deductions ${fmt$(totals.deductions)}</span><strong>Pending Amount ${fmt$(totals.pending)}</strong></div>
-            <div class="grid c4">${selectInput(`vendor-method-${vendor.id}`, DB.payMethods.map((method) => [method.id, method.name]), DB.payMethods[0]?.id || "")}<input id="vendor-fee-${vendor.id}" type="number" placeholder="Fee percentage"><input id="vendor-tag-${vendor.id}" placeholder="Payment tag"><button class="btn btn-primary" onclick="TM.addVendorFee('${vendor.id}')" ${IS_ONLINE ? "" : "disabled"}>Add Fee Row</button></div>
-          </article>`;
-        }).join("")}
+        <div class="row between"><div class="subtabs"><button class="tab ${!archived ? "active" : ""}" onclick="TM.setPayMethodSection('active')">Active Vendors</button><button class="tab ${archived ? "active" : ""}" onclick="TM.setPayMethodSection('archived')">Archived Vendors</button></div><button class="btn btn-primary" onclick="TM.openModal('payVendor')" ${IS_ONLINE ? "" : "disabled"}>Add Payment Vendor</button></div>
+        ${simpleTable(["Vendor", "Status", "Contact Person", "Phone", "Fee Rows", "Deposits", "Pending"], paymentRows)}
+        ${selectedPayVendor ? renderPaymentVendorDetail(selectedPayVendor) : `<div class="empty">No payment vendors yet.</div>`}
       </div></div>
+      ${renderAdminPayMethods()}
     </div>`;
-    const gameSection = `<div class="fc"><div class="fc-head">Game Vendors</div><div class="fg stack">
-        <div class="pill-list">${DB.gameVendors.map((vendor) => `<span class="pill">${esc(vendor.name)} - ${DB.games.filter((game) => game.gameVendorId === vendor.id).map((game) => game.name).join(", ") || "No games"} <button class="btn btn-xs btn-danger" onclick="TM.deleteGameVendor('${vendor.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete</button></span>`).join("")}</div>
-        <div class="row"><input id="new-game-vendor" placeholder="Game vendor name"><button class="btn btn-primary" onclick="TM.addGameVendor()" ${IS_ONLINE ? "" : "disabled"}>Add Game Vendor</button></div>
-      </div></div>`;
-    return `<section class="stack">
-      <div class="subtabs"><button class="tab ${section === "payment" ? "active" : ""}" onclick="TM.setVendorSection('payment')">Payment Vendors</button><button class="tab ${section === "game" ? "active" : ""}" onclick="TM.setVendorSection('game')">Game Vendors</button></div>
-      ${section === "payment" ? paymentSection : gameSection}
-    </section>`;
+    return `<section class="stack">${paymentSection}</section>`;
+  }
+
+  function renderPaymentVendorDetail(vendor) {
+    const totals = vendorTotals(vendor);
+    const actions = vendor.archived
+      ? `<button class="btn btn-xs btn-success" onclick="TM.restorePayVendor('${vendor.id}')" ${IS_ONLINE ? "" : "disabled"}>Restore Vendor</button>`
+      : `<button class="btn btn-xs btn-success" onclick="TM.recordVendorPayment('${vendor.id}')" ${IS_ONLINE ? "" : "disabled"}>Record Payment</button><button class="btn btn-xs btn-warn" onclick="TM.addVendorDeduction('${vendor.id}')" ${IS_ONLINE ? "" : "disabled"}>Add Deduction</button><button class="btn btn-xs btn-ghost" onclick="TM.viewVendorPaymentHistory('${vendor.id}')">View History</button><button class="btn btn-xs btn-ghost" onclick="TM.editPayVendor('${vendor.id}')">Edit Vendor</button><button class="btn btn-xs btn-warn" onclick="TM.archivePayVendor('${vendor.id}')" ${IS_ONLINE ? "" : "disabled"}>Archive Vendor</button><button class="btn btn-xs btn-danger" onclick="TM.deletePayVendor('${vendor.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete Vendor</button>`;
+    return `<article class="vendor-detail stack">
+      <div class="row between"><strong>${esc(vendor.name)} Details ${vendor.archived ? `<span class="badge bd-gray">Archived</span>` : ""}</strong><div class="row">${actions}</div></div>
+      <div class="hint lookup-grid"><span><b>Contact Person</b>${esc(vendor.contactPerson || "Not Set")}</span><span><b>Phone</b>${esc(vendor.phone || "Not Set")}</span><span><b>Email</b>${esc(vendor.email || "Not Set")}</span><span><b>WhatsApp Group</b>${vendor.hasWhatsappGroup ? esc(vendor.groupName || "Yes") : "No"}</span></div>
+      <div class="vendor-total-row"><span>Total Deposits ${fmt$(totals.deposits)}</span><span>Total Fees ${fmt$(totals.fees)}</span><span>Paid Received ${fmt$(totals.paid)}</span><span>Deductions ${fmt$(totals.deductions)}</span><strong>Pending Amount ${fmt$(totals.pending)}</strong></div>
+      <div class="tbl-wrap"><table><thead><tr><th>Method</th><th>Pay Tag</th><th>Fee Percentage</th><th>Deposits Received</th><th>Fee Amount</th><th>Gross Amount to Receive</th><th>Actions</th></tr></thead><tbody>
+      ${(vendor.fees || []).map((fee) => {
+        const deposits = vendorFeeDeposits(fee);
+        const feeAmount = deposits * num(fee.fee) / 100;
+        const editing = S.editVendorFeeId === fee.id;
+        const actions = vendor.archived ? `<span class="badge bd-gray">Archived</span>` : editing ? `<button class="btn btn-xs btn-success" onclick="TM.saveVendorFeeEdit('${vendor.id}','${fee.id}')" ${IS_ONLINE ? "" : "disabled"}>Save</button><button class="btn btn-xs btn-ghost" onclick="TM.cancelVendorFeeEdit()">Cancel</button>` : `<button class="btn btn-xs btn-ghost" onclick="TM.editVendorFee('${fee.id}')">Edit</button><button class="btn btn-xs btn-danger" onclick="TM.deleteVendorFee('${vendor.id}','${fee.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete</button>`;
+        return `<tr><td>${esc(DB.payMethods.find((method) => method.id === fee.payMethodId)?.name || "")}</td><td>${esc(fee.payTag)}</td><td>${editing && !vendor.archived ? `<input id="edit-fee-${fee.id}" type="number" value="${esc(fee.fee)}">` : `${fmtPlain(fee.fee)}%`}</td><td>${fmt$(deposits)}</td><td>${fmt$(feeAmount)}</td><td><strong>${fmt$(deposits - feeAmount)}</strong></td><td><div class="row">${actions}</div></td></tr>`;
+      }).join("") || `<tr><td colspan="7" class="empty">No fee rows.</td></tr>`}
+      </tbody></table></div>
+      ${vendor.archived ? `<div class="notice warn">This vendor is archived. Restore it before adding or changing fee rows.</div>` : `<div class="grid c4">${selectInput(`vendor-method-${vendor.id}`, DB.payMethods.map((method) => [method.id, method.name]), DB.payMethods[0]?.id || "")}<input id="vendor-fee-${vendor.id}" type="number" placeholder="Fee percentage"><input id="vendor-tag-${vendor.id}" placeholder="Payment tag"><button class="btn btn-primary" onclick="TM.addVendorFee('${vendor.id}')" ${IS_ONLINE ? "" : "disabled"}>Add Fee Row</button></div>`}
+    </article>`;
+  }
+
+  function renderGameVendorDetail(vendor) {
+    const games = DB.games.filter((game) => game.gameVendorId === vendor.id);
+    return `<article class="vendor-detail stack">
+      <div class="row between"><strong>${esc(vendor.name)} Games</strong><div class="row"><button class="btn btn-xs btn-ghost" onclick="TM.editGameVendor('${vendor.id}')">Edit Vendor</button><button class="btn btn-xs btn-danger" onclick="TM.deleteGameVendor('${vendor.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete Vendor</button></div></div>
+      <div class="hint lookup-grid"><span><b>Contact Person</b>${esc(vendor.contactPerson || "Not Set")}</span><span><b>Phone</b>${esc(vendor.phone || "Not Set")}</span><span><b>Email</b>${esc(vendor.email || "Not Set")}</span><span><b>WhatsApp Group</b>${vendor.hasWhatsappGroup ? esc(vendor.groupName || "Yes") : "No"}</span></div>
+      ${simpleTable(["Game", "Backend Loaded", "Current Balance", "Price / 1000"], games.map((game) => [esc(game.name), fmt$(game.backendLoaded), fmt$(gameBal(game.id)), fmt$(game.pricePer1k)]))}
+    </article>`;
   }
 
   function renderAdminExpenses() {
@@ -2556,6 +3779,13 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function renderAdminSupabase() {
     return `<section class="grid c2">
+      <div class="fc full"><div class="fc-head">Sync Safety Status</div><div class="fg grid c4">
+        <article class="kpi-card"><span>Connection</span><strong>${SUPABASE_READY ? "Ready" : "Needs Check"}</strong><small>${IS_ONLINE ? "Internet online" : "Internet offline"}</small></article>
+        <article class="kpi-card"><span>Pending Queue</span><strong>${syncQueue.length}</strong><small>${syncBusy ? "Sync running" : "Waiting changes"}</small></article>
+        <article class="kpi-card"><span>Current Entries</span><strong>${DB.entries.length}</strong><small>Open shift only</small></article>
+        <article class="kpi-card"><span>Archived Shifts</span><strong>${DB.closedShifts.length}</strong><small>Closed history</small></article>
+        <p class="muted full">${esc(lastSavedStatus || "No sync status yet.")}</p>
+      </div></div>
       <div class="fc"><div class="fc-head">Connection Settings</div><div class="fg stack">
         <p><span class="online-pill"><i class="dot ${IS_ONLINE && DB.supabase.enabled ? "on" : ""}"></i>${DB.supabase.enabled ? (IS_ONLINE ? "Connected or ready" : "Offline") : "Disabled"}</span></p>
         ${field("Project Link", `<input id="sb-url" value="${esc(DB.supabase.url)}">`)}
@@ -2575,12 +3805,13 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function renderAdminSettings() {
     const theme = normalizeTheme(DB.theme);
-    const custom = theme.custom;
+    const custom = currentThemeValues();
+    const savedName = theme.mode.startsWith("saved:") ? DB.savedThemes.find((item) => `saved:${item.id}` === theme.mode)?.name || "" : "";
     return `<section class="grid c2">
-      <div class="fc full"><div class="fc-head">Theme And Appearance</div><div class="fg stack">
-        <p class="muted">Choose a CRM style from anywhere using the top bar, or build a custom palette here.</p>
+      <div class="fc full"><div class="fc-head">Theme and Appearance</div><div class="fg stack">
         <div class="grid c3">
           ${field("Theme Style", selectInput("theme-mode", themeOptions(), theme.mode, "TM.setThemeMode(this.value)"))}
+          ${field("Custom Theme Name", `<input id="theme-name" value="${esc(savedName)}">`)}
           ${field("Primary Action Color", `<input type="color" value="${esc(custom.primary)}" id="theme-primary" oninput="TM.previewCustomTheme()">`)}
           ${field("Brand Accent Color", `<input type="color" value="${esc(custom.gold)}" id="theme-gold" oninput="TM.previewCustomTheme()">`)}
         </div>
@@ -2600,20 +3831,25 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         </div>
         <div class="row end"><button class="btn btn-ghost" onclick="TM.resetCustomTheme()">Reset Custom Theme</button><button class="btn btn-primary" onclick="TM.saveTheme()">Save Theme</button><span id="theme-save-msg" class="success-text"></span></div>
       </div></div>
-      <div class="fc"><div class="fc-head">Authorization Code</div><div class="fg stack">
-        <p class="muted">This code is required when a recharge promo exceeds 100%. Only share with managers and admins.</p>
-        ${field("Authorization Code", `<input id="override-code" type="password" autocomplete="new-password" value="${esc(DB.overrideCode)}">`)}
-        <div class="row"><button class="btn btn-primary" onclick="TM.saveOverrideCode()" ${IS_ONLINE ? "" : "disabled"}>Save Code</button><span id="code-save-msg" class="success-text"></span></div>
-      </div></div>
     </section>`;
   }
 
   function renderAdminBackup() {
+    const gs = DB.googleSheets || {};
     return `<section class="grid c2">
       <div class="fc"><div class="fc-head">Export</div><div class="fg stack">
         <p class="muted">Total entries: ${allEntries().length}. Closed shifts: ${DB.closedShifts.length}.</p>
         <button class="btn btn-primary" onclick="TM.exportJson()">Export JSON Backup</button>
+        <button class="btn btn-success" onclick="TM.exportTransactionsExcel()">Export Transactions Excel</button>
         <button class="btn btn-success" onclick="TM.exportEntries()">Export Entries Comma Separated Values</button>
+      </div></div>
+      <div class="fc"><div class="fc-head">Google Sheets Backup</div><div class="fg stack">
+        <p><span class="online-pill"><i class="dot ${gs.enabled && IS_ONLINE ? "on" : ""}"></i>${gs.enabled ? "Append-only backup enabled" : "Backup disabled"}</span></p>
+        ${field("Apps Script Web App URL", `<input id="gs-url" class="mono" value="${esc(gs.webAppUrl || "")}" placeholder="https://script.google.com/macros/s/.../exec">`)}
+        ${field("Backup Token", `<input id="gs-token" class="mono" value="${esc(gs.token || "")}">`)}
+        <div class="row"><button class="btn btn-primary" onclick="TM.testGoogleSheets()" ${IS_ONLINE ? "" : "disabled"}>Send Test Row</button><button class="btn btn-success" onclick="TM.saveGoogleSheets(true)">Save & Enable</button><button class="btn btn-danger" onclick="TM.saveGoogleSheets(false)">Disable</button></div>
+        <button class="btn btn-purple" onclick="TM.syncCurrentToGoogleSheets()" ${IS_ONLINE && gs.enabled ? "" : "disabled"}>Sync Current Data to Google Sheets</button>
+        <p class="muted">Pending sheet rows: ${(gs.pending || []).length}. ${esc(lastSheetStatus || "No Google Sheets backup status yet.")}</p>
       </div></div>
       <div class="fc"><div class="fc-head">Restore</div><div class="fg stack">
         <input type="file" accept="application/json" onchange="TM.loadRestoreFile(this.files[0])">
@@ -2621,6 +3857,21 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         <p class="muted">Restore overwrites all local and synced CRM data after confirmation.</p>
       </div></div>
     </section>`;
+  }
+
+  function renderAdminAudit() {
+    const rows = (DB.auditLogs || []).slice(0, 300).map((log) => [
+      esc(fmtDateTime(log.at)),
+      esc(log.actor || "System"),
+      esc(log.action),
+      esc(log.target),
+      esc(log.note || ""),
+      `<details><summary>View</summary><pre class="audit-json">${esc(JSON.stringify({ before: log.before, after: log.after }, null, 2))}</pre></details>`
+    ]);
+    return `<section class="fc"><div class="fc-head">Audit Log</div><div class="fg stack">
+      <p class="muted">Tracks sensitive edits, deletions, shift closes, top-ups, and corrections.</p>
+      ${simpleTable(["Time", "User", "Action", "Target", "Note", "Details"], rows)}
+    </div></section>`;
   }
 
   function renderModal() {
@@ -2653,8 +3904,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function renderAdminLoginModal() {
     return modalWrap("Admin Dashboard Login", `<form id="admin-login-form" class="stack" onsubmit="TM.loginAdmin(event)">
       <p class="muted">Enter the admin name or email and the password or PIN saved in Staff & Access.</p>
-      ${field("Admin Name or Email", `<input id="admin-login-id" autocomplete="username" required autofocus>`)}
-      ${field("Password / PIN", `<input id="admin-login-pin" type="password" autocomplete="current-password" required>`)}
+      ${field("Admin Name or Email", `<input id="admin-login-id" name="username" autocomplete="username" required autofocus>`)}
+      ${field("Password / PIN", `<input id="admin-login-pin" name="current-password" type="password" autocomplete="current-password" required>`)}
       <div id="admin-login-error" class="danger-text" style="min-height:22px"></div>
     </form>`, `<button class="btn btn-ghost" onclick="TM.closeModal()">Cancel</button><button class="btn btn-primary" onclick="TM.loginAdmin()">Unlock Admin Dashboard</button>`);
   }
@@ -2664,9 +3915,9 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       <p class="muted">No admin user exists yet. Create the first Admin account, then use these credentials whenever you open Admin Dashboard.</p>
       <div class="grid c2">
         ${field("Full Name", `<input id="first-admin-name" required autofocus>`)}
-        ${field("Email", `<input id="first-admin-email" type="email" required autocomplete="username">`)}
-        ${field("Password / PIN", `<input id="first-admin-pin" type="password" autocomplete="new-password" required>`)}
-        ${field("Confirm Password / PIN", `<input id="first-admin-confirm" type="password" autocomplete="new-password" required>`)}
+        ${field("Email", `<input id="first-admin-email" name="username" type="email" required autocomplete="username">`)}
+        ${field("Password / PIN", `<input id="first-admin-pin" name="new-password" type="password" autocomplete="new-password" required>`)}
+        ${field("Confirm Password / PIN", `<input id="first-admin-confirm" name="confirm-password" type="password" autocomplete="new-password" required>`)}
       </div>
       <div id="first-admin-error" class="danger-text" style="min-height:22px"></div>
     </form>`, `<button class="btn btn-ghost" onclick="TM.closeModal()">Cancel</button><button class="btn btn-primary" onclick="TM.createFirstAdmin()" ${IS_ONLINE ? "" : "disabled"}>Create Admin</button>`);
@@ -2678,31 +3929,43 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function renderCloseShiftModal() {
     const balances = S.modal.balances || {};
-    const closeType = isDayClosingShift(activeShiftName()) ? "Day" : "Shift";
-    const body = `<div class="close-shift-compact">${DB.games.map((game) => {
+    const shiftName = S.modal.shiftName || DB.activeShiftName || getCurrentShiftName();
+    const shift = shiftByName(shiftName);
+    const closeType = isDayClosingShift(shiftName) ? "Day" : "Shift";
+    const body = `<div class="notice warn"><strong>You are closing: ${esc(shiftName)} ${closeType}</strong><br><span>Date: ${esc(isoToLabel(S.modal.date || todayISO()))}${shift ? ` · Time: ${esc(shift.start)}-${esc(shift.end)}` : ""} · Current clock shift: ${esc(getCurrentShiftName())}</span></div><div class="close-shift-compact">${DB.games.map((game) => {
       const sys = gameBal(game.id);
       const val = balances[game.id] ?? "";
       const diff = val === "" ? "" : num(val) - sys;
       return `<div class="close-row">
         <strong>${esc(game.name)}</strong>
         <span>${fmt$(sys)}</span>
-        <input id="close-${game.id}" type="number" step="0.01" value="${esc(val)}" oninput="TM.closeBalanceInput('${game.id}', this)" placeholder="Actual balance">
+        <input id="close-${game.id}" type="number" step="1" value="${esc(val)}" oninput="TM.closeBalanceInput('${game.id}', this)" placeholder="Actual balance">
         <small id="diff-${game.id}" class="${Math.abs(diff) < .01 && val !== "" ? "success-text" : val === "" ? "subtle" : "danger-text"}">${val === "" ? "Waiting" : `Difference ${fmt$(diff)}`}</small>
       </div>`;
     }).join("")}</div>`;
-    return modalWrap(`Close ${closeType}`, body, `<button class="btn btn-ghost" onclick="TM.closeModal()">Cancel</button><button class="btn btn-warn" onclick="TM.confirmCloseShift()" ${IS_ONLINE ? "" : "disabled"}>Confirm & Close ${closeType}</button>`);
+    return modalWrap(`Close ${shiftName} ${closeType}`, body, `<button class="btn btn-ghost" onclick="TM.closeModal()">Cancel</button><button class="btn btn-warn" onclick="TM.confirmCloseShift()" ${IS_ONLINE ? "" : "disabled"}>Confirm & Close ${esc(shiftName)}</button>`);
   }
 
   function renderCheckoutModal() {
     const person = personById(S.modal.personId);
-    const todayKey = todayISO();
+    const todayKey = S.modal.date || attendanceDateForPerson(person);
     const record = ensureAttendance(S.modal.personId, todayKey);
     const basePlayers = getBaseTotalPlayers(person?.name || "", todayKey);
-    const report = record.report || {};
-    const preview = buildWhatsAppReport(person, { ...report, totalPlayers: basePlayers + num(report.newPlayers) }, todayKey);
+    const auto = checkoutAutoReport(person, todayKey);
+    const report = { ...auto, ...(record.report || {}) };
+    const breakAllowed = num(person?.breakAllowedMins ?? 30);
+    const breakMins = Math.min(currentBreakMinutes(record), breakAllowed);
+    const totalPlayers = basePlayers + num(auto.newPlayers);
+    const preview = buildWhatsAppReport(person, { ...report, ...auto, breakMins, totalPlayers }, todayKey);
     return modalWrap("Check Out", `<form id="checkout-form" class="stack" onsubmit="TM.submitCheckout(event)">
       <p class="muted">${esc(person?.name || "")} is checking out for ${esc(isoToLabel(todayKey))}.</p>
-      <div class="grid c3">${REPORT_FIELDS.map((fieldItem) => field(fieldItem.label, `<input id="report-${fieldItem.key}" type="number" min="0" value="${esc(report[fieldItem.key] || "")}" oninput="TM.updateCheckoutPreview()">`)).join("")}${field("Total Players", `<input id="report-totalPlayers" value="${basePlayers + num(report.newPlayers)}" readonly>`)}</div>
+      <div class="grid c3">${REPORT_FIELDS.filter((fieldItem) => !["deposit", "newPlayers"].includes(fieldItem.key)).map((fieldItem) => field(fieldItem.label, `<input id="report-${fieldItem.key}" type="number" min="0" value="${esc(report[fieldItem.key] || "")}" oninput="TM.updateCheckoutPreview()">`)).join("")}${field("Break Minutes", `<input id="report-breakMins" type="number" min="0" max="${esc(breakAllowed)}" value="${esc(breakMins)}" readonly>`)}</div>
+      <div class="grid c4">
+        ${field("Deposit", `<input id="report-deposit" value="${esc(fmt$(auto.deposit))}" readonly>`)}
+        ${field("New Players", `<input id="report-newPlayers" value="${esc(auto.newPlayers)}" readonly>`)}
+        ${field("Total Deposit", `<input id="report-totalDeposit" value="${esc(fmt$(auto.totalDeposit))}" readonly>`)}
+        ${field("Total Players", `<input id="report-totalPlayers" value="${esc(totalPlayers)}" readonly>`)}
+      </div>
       <div class="fc"><div class="fc-head">WhatsApp Message Preview</div><div class="fg"><pre id="checkout-preview" class="report-preview">${esc(preview)}</pre><button type="button" class="btn btn-ghost btn-sm" onclick="TM.copyCheckoutPreview()">Copy Message</button></div></div>
     </form>`, `<button class="btn btn-ghost" onclick="TM.closeModal()">Cancel</button><button class="btn btn-primary" onclick="TM.submitCheckout()">Confirm Check Out</button>`, true);
   }
@@ -2728,19 +3991,18 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       ${field("Date", dateInput("edit-date", entry.date, ""))}
       ${field("Shift", selectInput("edit-shift", shiftOptions(), entry.shift))}
       ${field("Agent", selectInput("edit-agent", agentOptions(), entry.agent))}
+      ${field("Player ID", `<input id="edit-player-code" value="${esc(normalizePlayerCode(entry.playerCode))}" placeholder="PS-K7F2QA">`)}
       ${field("Player Name", `<input id="edit-player" value="${esc(entry.playerName)}">`)}
       ${field("Player Facebook Link", `<input id="edit-link" value="${esc(entry.playerUrl)}">`)}
       ${field("Game ID", `<input id="edit-gameid" value="${esc(entry.gameId)}">`)}
       ${field("Game Name", selectInput("edit-game", gameOptions(true), entry.gameName))}
       ${field("Deposit", `<input id="edit-deposit" type="number" step="0.01" value="${esc(entry.deposit || "")}">`)}
-      ${field("Recharge", `<input id="edit-recharge" type="number" step="0.01" value="${esc(entry.recharge || "")}">`)}
-      ${field("Freeplay Amount", `<input id="edit-fp" type="number" step="0.01" value="${esc(entry.fpAmount || "")}">`)}
-      ${field("Redeem Credits", `<input id="edit-rd" type="number" step="0.01" value="${esc(entry.rdCredits || "")}">`)}
+      ${field("Recharge", `<input id="edit-recharge" type="number" step="1" value="${esc(entry.recharge || "")}">`)}
+      ${field("Freeplay Amount", `<input id="edit-fp" type="number" step="1" value="${esc(entry.fpAmount || "")}">`)}
+      ${field("Redeem Credits", `<input id="edit-rd" type="number" step="1" value="${esc(entry.rdCredits || "")}">`)}
       ${field("Cashout Paid", `<input id="edit-cashout" type="number" step="0.01" value="${esc(entry.cashoutPaid || "")}">`)}
       ${field("Customer Tag or Email", `<input id="edit-cust" value="${esc(entry.custTag || "")}">`)}
       ${field("Player Legal Name", `<input id="edit-legal" value="${esc(entry.legalName || "")}">`)}
-      ${field("Contact Number", `<input id="edit-contact" value="${esc(entry.contact || "")}">`)}
-      ${field("Email", `<input id="edit-email" type="email" value="${esc(entry.email || "")}">`)}
       <label class="pill"><input id="edit-dispute" type="checkbox" ${entry.dispute ? "checked" : ""}> Mark as Dispute</label>
       ${field("Dispute Note", `<input id="edit-dispute-note" value="${esc(entry.disputeNote || "")}" placeholder="Reason or note">`, "span2")}
     </form>`, `<button class="btn btn-ghost" onclick="TM.closeModal()">Cancel</button><button class="btn btn-primary" onclick="TM.saveEntryEdit()" ${IS_ONLINE ? "" : "disabled"}>Save Entry</button>`, true);
@@ -2755,6 +4017,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       ${field("Status", selectInput("correct-status", [["present", "Present"], ["completed", "Completed"], ["absent", "Absent"], ["leave", "Leave"], ["off", "Scheduled Off"]], rec.status))}
       ${field("Check In Time", `<input id="correct-in" type="time" value="${timeValue(rec.checkInAt)}">`)}
       ${field("Check Out Time", `<input id="correct-out" type="time" value="${timeValue(rec.checkOutAt)}">`)}
+      ${field("Break Minutes", `<input id="correct-break" type="number" min="0" value="${esc(rec.breakMins || 0)}">`)}
       ${field("Leave Reason", `<input id="correct-reason" value="${esc(rec.leaveReason || rec.offReason || "")}">`)}
       <div class="full grid c3">${REPORT_FIELDS.map((fieldItem) => field(fieldItem.label, `<input id="correct-${fieldItem.key}" type="number" min="0" value="${esc(rec.report?.[fieldItem.key] || "")}">`)).join("")}</div>
     </form>`, `<button class="btn btn-ghost" onclick="TM.closeModal()">Cancel</button><button class="btn btn-primary" onclick="TM.saveAttendanceCorrection()" ${IS_ONLINE ? "" : "disabled"}>Save Correction</button>`, true);
@@ -2779,16 +4042,17 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const perms = staff?.perms || staffPermsForRole(role, adminAccess);
     const attendanceRequired = staff ? !!staff.attendanceRequired : ["manager", "supervisor", "agent"].includes(role);
     const showInDeposits = staff ? !!staff.showInDeposits : ["manager", "supervisor", "agent"].includes(role);
-    return modalWrap(staff ? "Edit Staff" : "Add Staff", `<form id="staff-form" class="stack">
+    return modalWrap(staff ? "Edit Staff" : "Add Staff", `<form id="staff-form" class="stack" onsubmit="TM.saveStaff(event)">
       <div class="grid c2">
         ${field("Full Name", `<input id="staff-name" value="${esc(staff?.name || "")}" required>`)}
         ${field("Email", `<input id="staff-email" type="email" value="${esc(staff?.email || "")}" required>`)}
         ${field("Role", selectInput("staff-role", [["admin", "Admin"], ["manager", "Manager"], ["supervisor", "Supervisor"], ["agent", "Agent"]], role, "TM.staffRoleChanged(this.value)"))}
         <label id="staff-pin-wrap" style="${adminAccess ? "" : "display:none"}">PIN / Password<input id="staff-pin" type="password" autocomplete="new-password" value="${esc(staff?.pin || "")}" ${adminAccess ? "required" : ""}></label>
-        ${field("Shift", selectInput("staff-shift", [["", "No Shift"], ...DB.shifts.map((shift) => [shift.id, `${shift.name} (${shift.start}-${shift.end})`])], staff?.shiftId || ""))}
+      ${field("Schedule", selectInput("staff-shift", [["", "No Schedule"], ...DB.shifts.map((shift) => [shift.id, `${shift.name} (${shift.start}-${shift.end})`])], staff?.shiftId || ""))}
         ${field("Staff Color", `<input id="staff-color" type="color" value="${esc(staff?.color || "#8796a3")}">`)}
         ${field("Monthly New Player Target", `<input id="staff-target-players" type="number" min="0" value="${esc(staff?.targets?.newPlayers || 0)}">`)}
         ${field("Monthly Sales Target", `<input id="staff-target-deposit" type="number" min="0" value="${esc(staff?.targets?.deposit || 0)}">`)}
+        ${field("Break Allowed Minutes", `<input id="staff-break-allowed" type="number" min="0" value="${esc(staff?.breakAllowedMins ?? 30)}">`)}
       </div>
       <div class="grid c2">
         <label class="pill"><input id="staff-attendance-required" type="checkbox" ${attendanceRequired ? "checked" : ""}> Attendance Required</label>
@@ -2805,20 +4069,21 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function renderAgentModal() {
     const agent = S.modal.agentId ? DB.agents.find((item) => item.id === S.modal.agentId) : null;
-    return modalWrap(agent ? "Edit Agent" : "Add Agent", `<form id="agent-form" class="grid c2">
+    return modalWrap(agent ? "Edit Agent" : "Add Agent", `<form id="agent-form" class="grid c2" onsubmit="TM.saveAgent(event)">
       ${field("Full Name", `<input id="agent-name" value="${esc(agent?.name || "")}" required>`)}
-      ${field("Role", `<input id="agent-role" value="${esc(agent?.role || "agent")}">`)}
-      ${field("Shift", selectInput("agent-shift", DB.shifts.map((shift) => [shift.id, `${shift.name} (${shift.start}-${shift.end})`]), agent?.shiftId || DB.shifts[0]?.id || ""))}
+      ${field("Role", selectInput("agent-role", agentRoleOptions(), agent?.role || DB.agentRoles[0] || "agent"))}
+      ${field("Schedule", selectInput("agent-shift", DB.shifts.map((shift) => [shift.id, `${shift.name} (${shift.start}-${shift.end})`]), agent?.shiftId || DB.shifts[0]?.id || ""))}
       ${field("Agent Color", `<input id="agent-color" type="color" value="${esc(agent?.color || "#24d8ff")}">`)}
       ${field("Monthly New Player Target", `<input id="agent-target-players" type="number" min="0" value="${esc(agent?.targets?.newPlayers || 0)}">`)}
       ${field("Monthly Sales Target", `<input id="agent-target-deposit" type="number" min="0" value="${esc(agent?.targets?.deposit || 0)}">`)}
+      ${field("Break Allowed Minutes", `<input id="agent-break-allowed" type="number" min="0" value="${esc(agent?.breakAllowedMins ?? 30)}">`)}
       <label class="pill"><input id="agent-attendance-required" type="checkbox" ${agent?.attendanceRequired === false ? "" : "checked"}> Attendance Required</label>
       <label class="pill"><input id="agent-show-deposits" type="checkbox" ${agent?.showInDeposits === false ? "" : "checked"}> Show Name in Sales Forms</label>
     </form>`, `<button class="btn btn-ghost" onclick="TM.closeModal()">Cancel</button><button class="btn btn-primary" onclick="TM.saveAgent()" ${IS_ONLINE ? "" : "disabled"}>Save Agent</button>`);
   }
 
   function renderAddGameModal() {
-    return modalWrap("Add Game", `<form id="game-form" class="grid c2">
+    return modalWrap("Add Game", `<form id="game-form" class="grid c2" onsubmit="TM.saveNewGame(event)">
       ${field("Game Name", `<input id="game-name" required>`)}
       ${field("Game Vendor", selectInput("game-vendor", [["", "Unassigned"], ...DB.gameVendors.map((vendor) => [vendor.id, vendor.name])], ""))}
       ${field("Price per 1000 Credits", `<input id="game-price" type="number" step="0.01">`)}
@@ -2830,21 +4095,32 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function renderSimpleModal(type) {
-    const titles = { addShift: "Add Shift", payMethod: "Add Payment Method", payVendor: "Add Payment Vendor" };
+    const titles = { addShift: "Add Shift", payMethod: "Add Payment Method", payVendor: "Add Payment Vendor", gameVendor: "Add Game Vendor", editPayVendor: "Edit Payment Vendor", editGameVendor: "Edit Game Vendor" };
     let body = "";
     let action = "";
     if (type === "addShift") {
-      body = `<form id="simple-form" class="grid c3">${field("Name", `<input id="shift-name" required>`)}${field("Start Time", `<input id="shift-start" type="time" required>`)}${field("End Time", `<input id="shift-end" type="time" required>`)}</form>`;
+      body = `<form id="simple-form" class="grid c3" onsubmit="TM.saveShift(event)">${field("Name", `<input id="shift-name" required>`)}${field("Start Time", selectInput("shift-start", timeOptions(), "08:00", "", "required"))}${field("End Time", selectInput("shift-end", timeOptions(), "20:00", "", "required"))}</form>`;
       action = "TM.saveShift()";
     } else if (type === "payMethod") {
-      body = `<form id="simple-form">${field("Payment Method Name", `<input id="pay-method-name" required>`)}</form>`;
+      body = `<form id="simple-form" onsubmit="TM.savePayMethod(event)">${field("Payment Method Name", `<input id="pay-method-name" required>`)}</form>`;
       action = "TM.savePayMethod()";
     } else if (type === "payVendor") {
-      body = `<form id="simple-form">${field("Vendor Name", `<input id="pay-vendor-name" required>`)}</form>`;
+      body = `<form id="simple-form" class="grid c2" onsubmit="TM.savePayVendor(event)">${field("Vendor Name", `<input id="pay-vendor-name" required>`)}${field("Contact Person", `<input id="pay-vendor-contact" placeholder="Person you contact">`)}${field("Contact Number", `<input id="pay-vendor-phone" placeholder="Phone number">`)}${field("Email", `<input id="pay-vendor-email" type="email" placeholder="Email address">`)}${field("WhatsApp Group", selectInput("pay-vendor-whatsapp", [["no", "No"], ["yes", "Yes"]], "no", "TM.vendorGroupToggle('pay')"))}${field("Group Name", `<input id="pay-vendor-group" placeholder="Group name" disabled>`)}</form>`;
       action = "TM.savePayVendor()";
+    } else if (type === "editPayVendor") {
+      const vendor = DB.payVendors.find((item) => item.id === S.modal.vendorId);
+      body = vendor ? `<form id="simple-form" class="grid c2" onsubmit="TM.savePayVendorEdit(event)">${field("Vendor Name", `<input id="pay-vendor-name" value="${esc(vendor.name)}" required>`)}${field("Contact Person", `<input id="pay-vendor-contact" value="${esc(vendor.contactPerson || "")}" placeholder="Person you contact">`)}${field("Contact Number", `<input id="pay-vendor-phone" value="${esc(vendor.phone || "")}" placeholder="Phone number">`)}${field("Email", `<input id="pay-vendor-email" type="email" value="${esc(vendor.email || "")}" placeholder="Email address">`)}${field("WhatsApp Group", selectInput("pay-vendor-whatsapp", [["no", "No"], ["yes", "Yes"]], vendor.hasWhatsappGroup ? "yes" : "no", "TM.vendorGroupToggle('pay')"))}${field("Group Name", `<input id="pay-vendor-group" value="${esc(vendor.groupName || "")}" placeholder="Group name" ${vendor.hasWhatsappGroup ? "" : "disabled"}>`)}</form>` : `<div class="empty">Vendor not found.</div>`;
+      action = "TM.savePayVendorEdit()";
+    } else if (type === "gameVendor") {
+      body = `<form id="simple-form" class="grid c2" onsubmit="TM.addGameVendor(event)">${field("Vendor Name", `<input id="game-vendor-name" required>`)}${field("Contact Person", `<input id="game-vendor-contact" placeholder="Person you contact">`)}${field("Contact Number", `<input id="game-vendor-phone" placeholder="Phone number">`)}${field("Email", `<input id="game-vendor-email" type="email" placeholder="Email address">`)}${field("WhatsApp Group", selectInput("game-vendor-whatsapp", [["no", "No"], ["yes", "Yes"]], "no", "TM.vendorGroupToggle('game')"))}${field("Group Name", `<input id="game-vendor-group" placeholder="Group name" disabled>`)}</form>`;
+      action = "TM.addGameVendor()";
+    } else if (type === "editGameVendor") {
+      const vendor = DB.gameVendors.find((item) => item.id === S.modal.vendorId);
+      body = vendor ? `<form id="simple-form" class="grid c2" onsubmit="TM.saveGameVendorEdit(event)">${field("Vendor Name", `<input id="game-vendor-name" value="${esc(vendor.name)}" required>`)}${field("Contact Person", `<input id="game-vendor-contact" value="${esc(vendor.contactPerson || "")}" placeholder="Person you contact">`)}${field("Contact Number", `<input id="game-vendor-phone" value="${esc(vendor.phone || "")}" placeholder="Phone number">`)}${field("Email", `<input id="game-vendor-email" type="email" value="${esc(vendor.email || "")}" placeholder="Email address">`)}${field("WhatsApp Group", selectInput("game-vendor-whatsapp", [["no", "No"], ["yes", "Yes"]], vendor.hasWhatsappGroup ? "yes" : "no", "TM.vendorGroupToggle('game')"))}${field("Group Name", `<input id="game-vendor-group" value="${esc(vendor.groupName || "")}" placeholder="Group name" ${vendor.hasWhatsappGroup ? "" : "disabled"}>`)}</form>` : `<div class="empty">Vendor not found.</div>`;
+      action = "TM.saveGameVendorEdit()";
     } else if (type === "pageName") {
       const page = S.modal.pageId ? DB.pageNames.find((item) => item.id === S.modal.pageId) : null;
-      body = `<form id="simple-form" class="grid c3">${field("Page Name", `<input id="page-name" value="${esc(page?.name || "")}" required>`)}${field("Page Link", `<input id="page-link" value="${esc(page?.link || "")}" placeholder="https://facebook.com/...">`)}${field("Access Given To", `<input id="page-access" value="${esc(page?.accessTo || "")}" placeholder="Names or team">`)}</form>`;
+      body = `<form id="simple-form" class="grid c3" onsubmit="TM.savePageName(event)">${field("Page Name", `<input id="page-name" value="${esc(page?.name || "")}" required>`)}${field("Page Link", `<input id="page-link" value="${esc(page?.link || "")}" placeholder="https://facebook.com/...">`)}${field("Access Given To", `<input id="page-access" value="${esc(page?.accessTo || "")}" placeholder="Names or team">`)}</form>`;
       action = "TM.savePageName()";
     }
     const title = type === "pageName" ? (S.modal.pageId ? "Edit Page Name" : "Add Page Name") : (titles[type] || "Modal");
@@ -2854,7 +4130,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function adminCandidates() {
     return DB.staff.filter((staff) => {
       const perms = staff.perms || [];
-      return staff.role !== "agent" && !!staff.adminAccess && !!staff.pin && perms.includes("View Dashboard");
+      const hasAdminPerm = Object.values(ADMIN_SECTION_PERMS).some((perm) => perms.includes(perm));
+      return staff.role !== "agent" && !!staff.adminAccess && !!staff.pin && hasAdminPerm;
     });
   }
 
@@ -2862,7 +4139,17 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     return DB.staff.find((staff) => staff.id === S.adminUserId);
   }
 
+  function canManageStaffAccess() {
+    const user = currentAdminUser();
+    return !user || ["owner", "admin"].includes(user.role);
+  }
+
   function openAdminGate() {
+    if (isAgentPortal()) {
+      S.page = isShiftOpen() ? "shift" : "closed";
+      render();
+      return;
+    }
     if (S.adminAuthed && currentAdminUser()) {
       S.page = "admin";
       render();
@@ -2894,12 +4181,13 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     S.adminUserId = staff.id;
     S.modal = null;
     S.page = "admin";
+    saveAdminSession();
     render();
   }
 
-  function createFirstAdmin(event) {
+  async function createFirstAdmin(event) {
     event?.preventDefault();
-    if (!checkOnline()) return;
+    if (!IS_ONLINE) return alert("No internet connection. Admin setup must be saved to Supabase.");
     const name = document.getElementById("first-admin-name")?.value.trim();
     const email = document.getElementById("first-admin-email")?.value.trim();
     const pin = document.getElementById("first-admin-pin")?.value || "";
@@ -2915,23 +4203,32 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     }
     const staff = { id: uid("staff"), name, email, role: "admin", pin, shiftId: "", color: "#8796a3", adminAccess: true, attendanceRequired: false, showInDeposits: false, targets: { newPlayers: 0, deposit: 0 }, perms: staffPermsForRole("admin", true) };
     DB.staff.unshift(staff);
-    saveDB();
-    pushConfig();
+    const saved = await sbPush();
+    if (!saved) {
+      DB.staff = DB.staff.filter((item) => item.id !== staff.id);
+      if (error) error.textContent = "Could not save admin to Supabase. Check the Supabase URL, API key, internet connection, and SQL setup.";
+      return;
+    }
     S.adminAuthed = true;
     S.adminUserId = staff.id;
     S.modal = null;
     S.page = "admin";
+    saveAdminSession();
     render();
   }
 
   function lockAdmin() {
     S.adminAuthed = false;
     S.adminUserId = "";
-    S.page = "shift";
+    saveAdminSession();
+    S.page = isAdminPortal() ? "admin" : "shift";
+    if (isAdminPortal()) S.modal = { type: adminCandidates().length ? "adminLogin" : "adminSetup" };
     render();
   }
 
   function setPage(page) {
+    if (isAgentPortal() && page === "admin") return;
+    if (isAdminPortal() && page !== "admin") page = "admin";
     if (page === "admin" && (!S.adminAuthed || !currentAdminUser())) {
       openAdminGate();
       return;
@@ -2951,6 +4248,9 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function setAdmin(section) {
+    if (section === "shifts" || section === "agents") section = "team";
+    if (section === "payMethods") section = "vendors";
+    if (!canAdminSection(section)) section = "dashboard";
     S.adminSection = section;
     render();
   }
@@ -2975,17 +4275,77 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     if (rerender) render();
   }
 
+  function fillCommonFromPlayer(form, entry) {
+    form.playerCode = normalizePlayerCode(entry.playerCode);
+    form.playerName = cleanLegacyText(entry.playerName);
+    form.playerUrl = cleanLegacyText(entry.playerUrl);
+    form.gameId = cleanLegacyText(entry.gameId);
+    form.gameName = cleanLegacyText(entry.gameName);
+    form.salesName = "";
+    form.legalName = "";
+    form.contact = "";
+    form.email = "";
+  }
+
+  function playerLookupError(code) {
+    alert(`No player found for ${normalizePlayerCode(code) || "that code"}.`);
+  }
+
+  function fillPaidFromCode() {
+    const entry = lastEntryForPlayerCode(S.pf.playerCode);
+    if (!entry) return playerLookupError(S.pf.playerCode);
+    fillCommonFromPlayer(S.pf, entry);
+    S.pf.deposit = "";
+    S.pf.recharge = "";
+    S.pf.promo = "0.00";
+    S.pf.promoP = "0.00";
+    S.pf.custTag = entry.type === "paid" ? cleanLegacyText(entry.custTag) : "";
+    S.pf.payMethodId = entry.payMethodId || "";
+    S.pf.payTagId = entry.payTagId || "";
+    S.pf.payTagLabel = entry.payTagLabel || "";
+    S.pf.depositOnPage = !!entry.depositOnPage;
+    S.pf.pageName = entry.pageName || "";
+    S.pf.huntingProfile = entry.huntingProfile || "";
+    render();
+  }
+
+  function fillFreeplayFromCode() {
+    const entry = lastEntryForPlayerCode(S.ff.playerCode);
+    if (!entry) return playerLookupError(S.ff.playerCode);
+    fillCommonFromPlayer(S.ff, entry);
+    S.ff.fpAmount = "";
+    render();
+  }
+
+  function fillRedeemFromCode() {
+    const entry = lastEntryForPlayerCode(S.rf.playerCode);
+    if (!entry) return playerLookupError(S.rf.playerCode);
+    S.rf.playerCode = normalizePlayerCode(entry.playerCode);
+    S.rf.gameId = entry.gameId || "";
+    S.rf.gameName = entry.gameName || "";
+    S.rf.rdCredits = "";
+    S.rf.cashoutPaid = "";
+    render();
+  }
+
   function setPaidMethod(value) {
     S.pf.payMethodId = value;
     S.pf.payTagId = "";
     S.pf.payTagLabel = "";
-    render();
+    refreshPaidTagSelect();
   }
 
   function setPaidTag(value) {
     S.pf.payTagId = value;
     S.pf.payTagLabel = tagsFor(S.pf.payMethodId).find((tag) => tag.id === value)?.tag || "";
-    render();
+  }
+
+  function refreshPaidTagSelect() {
+    const select = document.getElementById("paid-tag");
+    if (!select) return;
+    const options = [["", "Select Payment Tag"], ...tagsFor(S.pf.payMethodId).map((item) => [item.id, item.tag])];
+    select.innerHTML = options.map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`).join("");
+    select.value = S.pf.payTagId || "";
   }
 
   function updatePaidMoney() {
@@ -3028,6 +4388,29 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     }
   }
 
+  function toggleFreeplayDepositOnPage(value) {
+    S.ff.depositOnPage = value;
+    const page = document.getElementById("free-page");
+    const hunting = document.getElementById("free-hunting");
+    const yes = page?.closest(".form-grid")?.querySelector(".t-yes");
+    const no = page?.closest(".form-grid")?.querySelector(".t-no");
+    if (yes) yes.classList.toggle("active", value);
+    if (no) no.classList.toggle("active", !value);
+    if (page) {
+      page.disabled = !value;
+      if (!value) page.value = "";
+      else page.value = S.ff.pageName || "";
+      S.ff.pageName = page.value;
+    }
+    if (hunting) {
+      hunting.disabled = value;
+      if (value) {
+        hunting.value = "";
+        S.ff.huntingProfile = "";
+      }
+    }
+  }
+
   function validateLink(input, hintId) {
     const ok = isUrl(input.value.trim());
     input.classList.toggle("valid", ok);
@@ -3035,16 +4418,6 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const hint = document.getElementById(hintId);
     if (hint) hint.textContent = ok ? "Valid link." : "Enter a valid full link.";
     return ok;
-  }
-
-  function validateOptionalLink(input, hintId) {
-    if (!input.value.trim()) {
-      input.classList.remove("valid", "invalid");
-      const hint = document.getElementById(hintId);
-      if (hint) hint.textContent = "Optional full Facebook link.";
-      return true;
-    }
-    return validateLink(input, hintId);
   }
 
   function buildPaidEntry() {
@@ -3060,6 +4433,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       agent: f.agent,
       playerName: f.playerName.trim(),
       playerUrl: f.playerUrl.trim(),
+      playerCode: normalizePlayerCode(f.playerCode),
       gameId: f.gameId.trim(),
       gameName: f.gameName,
       deposit: num(f.deposit),
@@ -3125,16 +4499,67 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     if (entry.deposit <= 0) money.push("paid-deposit");
     if (entry.recharge <= 0) money.push("paid-recharge");
     if (money.length) return { message: "Deposit and Recharge must be greater than zero.", ids: money };
+    if (!isWholeNumber(entry.recharge)) return { message: "Recharge credits must be a whole number. Deposit can be decimal, but backend credits cannot.", ids: ["paid-recharge"] };
+    return null;
+  }
+
+  function creditDebitAmount(entry) {
+    if (entry.type === "paid") return num(entry.recharge);
+    if (entry.type === "freeplay" || entry.type === "referral") return num(entry.fpAmount);
+    return 0;
+  }
+
+  function projectedGameBalanceForEdit(entry, before) {
+    const game = findGameForEntry(entry);
+    if (!game) return { game: null, balance: 0 };
+    const beforeSameGame = before && (before.gameId === game.id || before.gameName === game.name);
+    const restored = beforeSameGame ? creditDebitAmount(before) : 0;
+    return { game, balance: gameBal(game.id) + restored - creditDebitAmount(entry) };
+  }
+
+  function validateEntryEditBalance(entry, before) {
+    const wholeErr = validateGameCreditEntry({ ...entry, gameId: "", gameName: "", recharge: 0, fpAmount: 0 });
+    if (wholeErr && entry.type === "redeem") return wholeErr;
+    if (!["paid", "freeplay", "referral"].includes(entry.type)) return null;
+    if (!isWholeNumber(creditDebitAmount(entry))) return { message: "Game credits must be a whole number.", ids: [] };
+    const { game, balance } = projectedGameBalanceForEdit(entry, before);
+    if (!game) return { message: "Select a valid configured game before saving credits.", ids: [] };
+    if (balance < 0) return { message: `${game.name} would become negative after this edit. Current/edit balance would be ${fmtPlain(balance)} credits.`, ids: [] };
+    return null;
+  }
+
+  function validateGameCreditEntry(entry) {
+    const ids = {
+      paid: "paid-recharge",
+      freeplay: "free-amount",
+      referral: "ref-coins",
+      redeem: "redeem-credits"
+    };
+    if (["paid", "freeplay", "referral"].includes(entry.type) && !isWholeNumber(creditDebitAmount(entry))) {
+      return { message: "Game credits must be a whole number. Backend balances cannot use decimals.", ids: [ids[entry.type]] };
+    }
+    if (entry.type === "redeem" && !isWholeNumber(entry.rdCredits)) {
+      return { message: "Redeem credits must be a whole number.", ids: ["redeem-credits"] };
+    }
+    const debit = creditDebitAmount(entry);
+    if (debit <= 0) return null;
+    const game = findGameForEntry(entry);
+    const balance = game ? gameBal(game.id) : 0;
+    if (!game) return { message: "Select a valid configured game before issuing credits.", ids: [ids[entry.type] || ""] };
+    if (balance < debit) return { message: `${game.name} has ${fmtPlain(balance)} credits available. You cannot issue ${fmtPlain(debit)} credits because game balance cannot go negative.`, ids: [ids[entry.type]] };
     return null;
   }
 
   function submitPaid(event) {
     event?.preventDefault();
     if (!checkOnline()) return;
+    if (!requirePerm("Add Paid Recharge")) return;
     if (!checkShiftOpen()) return;
     const entry = buildPaidEntry();
     const err = validatePaid(entry);
     if (err) return showFieldErrors(err.ids, err.message);
+    const creditErr = validateGameCreditEntry(entry);
+    if (creditErr) return showFieldErrors(creditErr.ids, creditErr.message);
     if (entry.promoP > 100) {
       S._pendingEntry = entry;
       S.modal = { type: "override" };
@@ -3142,18 +4567,28 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       setTimeout(() => document.getElementById("override-input")?.focus(), 0);
       return;
     }
-    saveEntry(entry);
-    clearPaid();
+    if (saveEntry(entry)) clearPaid();
   }
 
   function saveEntry(entry) {
-    if (!isShiftOpen()) return alert("Start the current shift before adding entries.");
+    if (!isShiftOpen()) {
+      alert("Start the current shift before adding entries.");
+      return false;
+    }
+    const creditErr = validateGameCreditEntry(entry);
+    if (creditErr) {
+      showFieldErrors(creditErr.ids, creditErr.message);
+      return false;
+    }
+    ensurePlayerCode(entry);
+    if (entry.referredByCode && !entry.referralForCode) entry.referralForCode = entry.playerCode;
     entry.shift = entry.shift || activeShiftName();
     entry.shiftSession = `${entry.shift} - ${isoToLabel(entry.date)}`;
     DB.entries.unshift(entry);
     saveDB();
     syncEntry(entry);
     render();
+    return true;
   }
 
   function clearPaid() {
@@ -3164,6 +4599,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function submitFreeplay(event) {
     event?.preventDefault();
     if (!checkOnline()) return;
+    if (!requirePerm("Add Freeplay")) return;
     if (!checkShiftOpen()) return;
     const f = S.ff;
     const missing = [];
@@ -3172,10 +4608,13 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     if (!f.agent) missing.push("free-agent");
     if (!f.playerName.trim()) missing.push("free-player");
     if (!f.fpAmount || num(f.fpAmount) <= 0) missing.push("free-amount");
+    if (!f.playerUrl.trim()) missing.push("free-link");
     if (!f.gameName) missing.push("free-game");
     if (!f.gameId.trim()) missing.push("free-gameid");
+    if (f.depositOnPage && !f.pageName) missing.push("free-page");
+    if (!f.depositOnPage && !f.huntingProfile) missing.push("free-hunting");
     if (missing.length) return showFieldErrors(missing, "Please complete the highlighted freeplay fields.");
-    if (f.playerUrl && !isUrl(f.playerUrl)) return showFieldErrors(["free-link"], "Player Facebook Link must be a valid full link.");
+    if (!isUrl(f.playerUrl)) return showFieldErrors(["free-link"], "Player Facebook Link must be a valid full link.");
     const entry = {
       id: uid("entry"),
       type: "freeplay",
@@ -3185,6 +4624,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       agent: f.agent,
       playerName: f.playerName.trim(),
       playerUrl: f.playerUrl.trim(),
+      playerCode: normalizePlayerCode(f.playerCode),
       gameId: f.gameId.trim(),
       gameName: f.gameName,
       deposit: 0,
@@ -3197,14 +4637,16 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       isNewPlayer: [f.salesName, f.legalName, f.contact, f.email].some((value) => String(value || "").trim()),
       custTag: "",
       payMethodId: "",
+      depositOnPage: !!f.depositOnPage,
+      pageName: f.pageName,
+      huntingProfile: f.huntingProfile.trim(),
       legalName: f.legalName.trim(),
       contact: f.contact.trim(),
       email: f.email.trim(),
       salesName: f.salesName,
       createdAt: new Date().toISOString()
     };
-    saveEntry(entry);
-    clearFreeplay();
+    if (saveEntry(entry)) clearFreeplay();
   }
 
   function clearFreeplay() {
@@ -3215,6 +4657,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function submitRedeem(event) {
     event?.preventDefault();
     if (!checkOnline()) return;
+    if (!requirePerm("Add Redeem")) return;
     if (!checkShiftOpen()) return;
     const f = S.rf;
     const missing = [];
@@ -3226,7 +4669,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     if (!f.rdCredits || num(f.rdCredits) <= 0) missing.push("redeem-credits");
     if (f.cashoutPaid === "" || num(f.cashoutPaid) < 0) missing.push("redeem-cashout");
     if (missing.length) return showFieldErrors(missing, "Please complete the highlighted redeem fields.");
-    const paid = allEntries().filter((entry) => entry.type === "paid" && entry.gameId === f.gameId.trim()).sort((a, b) => String(b.createdAt || b.date).localeCompare(String(a.createdAt || a.date)))[0];
+    const paid = f.playerCode ? lastEntryForPlayerCode(f.playerCode) : allEntries().filter((entry) => entry.type === "paid" && entry.gameId === f.gameId.trim()).sort((a, b) => String(b.createdAt || b.date).localeCompare(String(a.createdAt || a.date)))[0];
     const entry = {
       id: uid("entry"),
       type: "redeem",
@@ -3236,6 +4679,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       agent: f.agent,
       playerName: paid?.playerName || "",
       playerUrl: paid?.playerUrl || "",
+      playerCode: normalizePlayerCode(f.playerCode || paid?.playerCode),
       gameId: f.gameId.trim(),
       gameName: f.gameName,
       deposit: 0,
@@ -3253,12 +4697,72 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       email: paid?.email || "",
       createdAt: new Date().toISOString()
     };
-    saveEntry(entry);
-    clearRedeem();
+    if (saveEntry(entry)) clearRedeem();
   }
 
   function clearRedeem() {
     S.rf = newRF();
+    render();
+  }
+
+  function submitReferralBonus(event) {
+    event?.preventDefault();
+    if (!checkOnline()) return;
+    if (!requirePerm("Add Freeplay")) return;
+    if (!checkShiftOpen()) return;
+    const f = S.referral;
+    const missing = [];
+    if (!f.date) missing.push("ref-date");
+    if (!f.shift) missing.push("ref-shift");
+    if (!f.agent) missing.push("ref-agent");
+    if (f.referrerType === "customer" && !normalizePlayerCode(f.referredByCode)) missing.push("ref-by-code");
+    if (f.referrerType === "external" && !f.referrerName.trim()) missing.push("ref-name");
+    if (!normalizePlayerCode(f.referredPlayerCode)) missing.push("ref-player-code");
+    if (!f.gameId.trim()) missing.push("ref-gameid");
+    if (!f.gameName) missing.push("ref-game");
+    if (num(f.coins) <= 0) missing.push("ref-coins");
+    if (missing.length) return showFieldErrors(missing, "Please complete the highlighted referral bonus fields.");
+    const referringPlayer = lastEntryForPlayerCode(f.referredByCode);
+    const isCustomer = f.referrerType === "customer";
+    const entry = {
+      id: uid("entry"),
+      type: "referral",
+      date: f.date,
+      shift: f.shift || activeShiftName(),
+      shiftSession: "Current",
+      agent: f.agent,
+      playerName: isCustomer ? referringPlayer?.playerName || "" : f.referrerName.trim(),
+      playerUrl: isCustomer ? referringPlayer?.playerUrl || "" : f.referrerContact.trim(),
+      playerCode: isCustomer ? normalizePlayerCode(f.referredByCode) : "",
+      gameId: f.gameId.trim(),
+      gameName: f.gameName,
+      deposit: 0,
+      recharge: 0,
+      promo: 0,
+      promoP: 0,
+      fpAmount: num(f.coins),
+      rdCredits: 0,
+      cashoutPaid: 0,
+      isNewPlayer: false,
+      custTag: "",
+      payMethodId: "",
+      legalName: isCustomer ? referringPlayer?.legalName || "" : "",
+      contact: isCustomer ? referringPlayer?.contact || "" : f.referrerContact.trim(),
+      email: referringPlayer?.email || "",
+      referralForCode: normalizePlayerCode(f.referredPlayerCode),
+      referredByCode: isCustomer ? normalizePlayerCode(f.referredByCode) : "",
+      referralBonusType: "credits",
+      referralBonusAmount: num(f.coins),
+      referralBonusPercent: 0,
+      referralNote: f.note.trim(),
+      createdAt: new Date().toISOString()
+    };
+    if (saveEntry(entry)) clearReferralBonus();
+  }
+
+  function clearReferralBonus() {
+    S.referral = newReferralForm();
+    S.referral.agent = salesPeople()[0]?.name || "";
     render();
   }
 
@@ -3277,12 +4781,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     S._pendingEntry = null;
     S.modal = null;
     if (entry) {
-      entry.shift = entry.shift || activeShiftName();
-      entry.shiftSession = `${entry.shift} - ${isoToLabel(entry.date)}`;
-      DB.entries.unshift(entry);
-      saveDB();
-      syncEntry(entry);
-      S.pf = newPF();
+      if (saveEntry(entry)) S.pf = newPF();
     }
     render();
   }
@@ -3296,7 +4795,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function checkIn(personId) {
     if (!checkOnline()) return;
     const person = personById(personId);
-    const record = ensureAttendance(personId, todayISO());
+    const dateKey = attendanceDateForPerson(person);
+    const record = ensureAttendance(personId, dateKey);
     if (record.checkInAt || record.checkOutAt) return;
     record.agentName = person?.name || "";
     record.checkInAt = new Date().toISOString();
@@ -3310,12 +4810,40 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     render();
   }
 
+  function currentBreakMinutes(record) {
+    return num(record?.breakMins) + (record?.breakStartAt ? minutesBetween(record.breakStartAt, new Date().toISOString()) : 0);
+  }
+
+  function breakTimeLeft(person, record) {
+    return Math.max(0, num(person?.breakAllowedMins ?? 30) - currentBreakMinutes(record));
+  }
+
+  function toggleBreak(personId) {
+    if (!checkOnline()) return;
+    const person = personById(personId);
+    const dateKey = attendanceDateForPerson(person);
+    const record = ensureAttendance(personId, dateKey);
+    if (!record.checkInAt || record.checkOutAt) return;
+    if (record.breakStartAt) {
+      record.breakMins = Math.min(num(person?.breakAllowedMins ?? 30), currentBreakMinutes(record));
+      record.breakStartAt = "";
+    } else {
+      if (breakTimeLeft(person, record) <= 0) return alert("No break time left for this shift.");
+      if (!confirm(`Start break for ${person?.name || "this employee"}?`)) return;
+      record.breakStartAt = new Date().toISOString();
+    }
+    saveDB();
+    syncAttendance(record);
+    render();
+  }
+
   function markLeave(personId) {
     if (!checkOnline()) return;
     const person = personById(personId);
     const reason = prompt("Leave reason");
     if (!reason) return;
-    const record = ensureAttendance(personId, todayISO());
+    const dateKey = attendanceDateForPerson(person);
+    const record = ensureAttendance(personId, dateKey);
     record.agentName = person?.name || "";
     record.status = "leave";
     record.leaveReason = reason;
@@ -3328,7 +4856,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function openCheckout(personId) {
-    S.modal = { type: "checkout", personId };
+    S.modal = { type: "checkout", personId, date: attendanceDateForPerson(personById(personId)) };
     render();
   }
 
@@ -3336,22 +4864,40 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     return allEntries().filter((entry) => entry.agent === agentName && entry.isNewPlayer && entry.date < dateKey).length;
   }
 
+  function checkoutAutoReport(person, dateKey) {
+    const rows = allEntries().filter((entry) => entry.agent === person?.name && entry.date === dateKey);
+    const deposit = rows.filter((entry) => entry.type === "paid").reduce((sum, entry) => sum + num(entry.deposit), 0);
+    const newPlayers = rows.filter((entry) => entry.isNewPlayer).length;
+    return {
+      deposit,
+      totalDeposit: deposit,
+      newPlayers
+    };
+  }
+
   function updateCheckoutPreview() {
-    const totalPlayers = getBaseTotalPlayers(personById(S.modal.personId)?.name || "", todayISO()) + num(document.getElementById("report-newPlayers")?.value);
+    const dateKey = S.modal.date || attendanceDateForPerson(personById(S.modal.personId));
+    const person = personById(S.modal.personId);
+    const auto = checkoutAutoReport(person, dateKey);
+    const totalPlayers = getBaseTotalPlayers(person?.name || "", dateKey) + num(auto.newPlayers);
     const totalEl = document.getElementById("report-totalPlayers");
     if (totalEl) totalEl.value = totalPlayers;
     const report = {};
-    REPORT_FIELDS.forEach((fieldItem) => {
+    REPORT_FIELDS.filter((fieldItem) => !["deposit", "newPlayers"].includes(fieldItem.key)).forEach((fieldItem) => {
       report[fieldItem.key] = num(document.getElementById(`report-${fieldItem.key}`)?.value);
     });
+    report.deposit = auto.deposit;
+    report.totalDeposit = auto.totalDeposit;
+    report.newPlayers = auto.newPlayers;
     report.totalPlayers = totalPlayers;
+    report.breakMins = num(document.getElementById("report-breakMins")?.value);
     const preview = document.getElementById("checkout-preview");
-    if (preview) preview.textContent = buildWhatsAppReport(personById(S.modal.personId), report, todayISO());
+    if (preview) preview.textContent = buildWhatsAppReport(person, report, dateKey);
   }
 
   function buildWhatsAppReport(person, report, dateKey) {
     return [
-      `Team Markhor Daily Report`,
+      `Panda Squad Daily Report`,
       `Date: ${isoToLabel(dateKey)}`,
       `Employee: ${person?.name || ""}`,
       `Hunting Messages Sent: ${fmtPlain(report.huntingMessagesSent || 0)}`,
@@ -3360,6 +4906,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       `Total IDs: ${fmtPlain(report.totalIds || 0)}`,
       `Deposit: ${fmt$(report.deposit || 0)}`,
       `New Players: ${fmtPlain(report.newPlayers || 0)}`,
+      `Total Deposit: ${fmt$(report.totalDeposit || report.deposit || 0)}`,
+      `Break Minutes: ${fmtPlain(report.breakMins || 0)}`,
       `Total Players: ${fmtPlain(report.totalPlayers || 0)}`
     ].join("\n");
   }
@@ -3368,15 +4916,25 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     event?.preventDefault();
     if (!checkOnline()) return;
     const person = personById(S.modal.personId);
-    const record = ensureAttendance(S.modal.personId, todayISO());
+    const dateKey = S.modal.date || attendanceDateForPerson(person);
+    const record = ensureAttendance(S.modal.personId, dateKey);
+    const auto = checkoutAutoReport(person, dateKey);
     const report = {};
-    REPORT_FIELDS.forEach((fieldItem) => {
+    REPORT_FIELDS.filter((fieldItem) => !["deposit", "newPlayers"].includes(fieldItem.key)).forEach((fieldItem) => {
       report[fieldItem.key] = num(document.getElementById(`report-${fieldItem.key}`)?.value);
     });
-    report.totalPlayers = getBaseTotalPlayers(person?.name || "", todayISO()) + num(report.newPlayers);
+    report.deposit = auto.deposit;
+    report.totalDeposit = auto.totalDeposit;
+    report.newPlayers = auto.newPlayers;
+    report.totalPlayers = getBaseTotalPlayers(person?.name || "", dateKey) + num(report.newPlayers);
+    const breakAllowed = num(person?.breakAllowedMins ?? 30);
+    const breakMins = Math.min(currentBreakMinutes(record), breakAllowed);
+    report.breakMins = breakMins;
     record.checkOutAt = new Date().toISOString();
     record.checkOut = record.checkOutAt;
-    record.duration = minutesBetween(record.checkInAt, record.checkOutAt);
+    record.breakMins = breakMins;
+    record.breakStartAt = "";
+    record.duration = Math.max(0, minutesBetween(record.checkInAt, record.checkOutAt) - breakMins);
     record.status = "completed";
     record.report = report;
     saveDB();
@@ -3454,7 +5012,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function deleteLeaveRequest(id) {
     if (!checkOnline()) return;
-    if (!confirm("Delete this leave request permanently?")) return;
+    if (!confirmDelete("Delete this leave request permanently?")) return;
     DB.leaveRequests = DB.leaveRequests.filter((item) => item.id !== id);
     DB.attendance.forEach((record) => {
       if (record.leaveRequestId === id && record.status === "leave-approved") {
@@ -3468,12 +5026,13 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function openCloseShift() {
+    if (!requirePerm("Close Shift")) return;
     if (!isShiftOpen()) {
       S.page = "closed";
       render();
       return;
     }
-    S.modal = { type: "closeShift", balances: {} };
+    S.modal = { type: "closeShift", balances: {}, shiftName: DB.activeShiftName || getCurrentShiftName(), date: todayISO() };
     render();
   }
 
@@ -3489,51 +5048,84 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       }
       return;
     }
-    const ok = Math.abs(diff) < .01;
+    const ok = isWholeNumber(input.value) && Math.abs(diff) < .01;
     input.style.borderColor = ok ? "var(--green)" : "var(--red)";
     if (diffEl) {
-      diffEl.textContent = `Difference ${fmt$(diff)}`;
+      diffEl.textContent = isWholeNumber(input.value) ? `Difference ${fmt$(diff)}` : "Closing balance must be a whole number.";
       diffEl.className = ok ? "success-text" : "danger-text";
     }
   }
 
   async function confirmCloseShift() {
     if (!checkOnline()) return;
+    if (!requirePerm("Close Shift")) return;
     const bad = [];
     DB.games.forEach((game) => {
       const raw = S.modal.balances[game.id];
       if (raw === undefined || raw === "") bad.push(`${game.name}: missing balance`);
       else {
+        if (!isWholeNumber(raw)) {
+          bad.push(`${game.name}: balance must be a whole number`);
+          return;
+        }
         const diff = num(raw) - gameBal(game.id);
         if (Math.abs(diff) >= .01) bad.push(`${game.name}: difference ${fmt$(diff)}`);
       }
     });
     if (bad.length) return alert(`Cannot close shift until balances match:\n${bad.join("\n")}`);
-    const closingDate = todayISO();
-    const shiftName = activeShiftName();
+    await closeCurrentShift("manual", { shiftName: S.modal.shiftName, date: S.modal.date });
+  }
+
+  async function closeCurrentShift(reason, options = {}) {
+    if (!checkOnline()) return false;
+    const closingDate = options.date || todayISO();
+    const shiftName = options.shiftName || DB.activeShiftName || activeShiftName();
+    const alreadyClosed = DB.closedShifts.some((shift) => shift.date === closingDate && shift.summary?.shiftName === shiftName);
+    if (alreadyClosed && !options.force) {
+      alert(`${shiftName} is already closed for ${isoToLabel(closingDate)}.`);
+      S.modal = null;
+      render();
+      return false;
+    }
     const closeType = isDayClosingShift(shiftName) ? "day" : "shift";
     const summary = { ...shiftKPIs(), durationMins: minutesBetween(DB.shiftStart, new Date().toISOString()) };
     const daySummary = { ...kpisForEntries(dayEntriesFor(closingDate)), closedShiftCount: DB.closedShifts.filter((shift) => shift.date === closingDate).length + 1 };
     const closed = {
       id: uid("closed"),
-      label: `${shiftName} - ${today()} - ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+      label: `${shiftName} - ${isoToLabel(closingDate)} - ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
       date: closingDate,
       closedAt: new Date().toISOString(),
       entries: clone(DB.entries),
-      summary: { ...summary, shiftName, closeType, daySummary },
+      summary: { ...summary, shiftName, closeType, closeReason: reason || "manual", forced: !!options.force, daySummary },
       createdAt: new Date().toISOString()
     };
     DB.closedShifts.unshift(closed);
+    audit("Close Shift", `${shiftName} ${closingDate}`, { entries: DB.entries, shiftStart: DB.shiftStart }, closed, reason || "manual");
     DB.entries = [];
-    DB.shiftOpen = false;
+    DB.shiftOpen = true;
+    const clockShift = getCurrentShiftName();
+    DB.activeShiftName = clockShift === shiftName ? nextShiftNameAfter(shiftName) : clockShift;
+    DB.shiftStart = new Date().toISOString();
+    S.pf = newPF();
+    S.ff = newFF();
+    S.rf = newRF();
+    S.referral = newReferralForm();
+    S.pf.agent = salesPeople()[0]?.name || "";
+    S.ff.agent = salesPeople()[0]?.name || "";
+    S.rf.agent = salesPeople()[0]?.name || "";
+    S.referral.agent = salesPeople()[0]?.name || "";
     saveDB();
     await sbPush();
+    queueSheetBatch("ClosedShifts", closedShiftColumns(), [closedShiftRow(closed)], "Close shift");
+    queueGameBalanceBackup("Close shift", closed.id);
     S.modal = null;
-    S.page = "closed";
+    S.page = "shift";
     render();
+    return true;
   }
 
   function startNewShift() {
+    if (!requirePerm("Close Shift")) return;
     DB.shiftOpen = true;
     DB.activeShiftName = getCurrentShiftName();
     DB.shiftStart = new Date().toISOString();
@@ -3544,6 +5136,32 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     pushConfig();
     S.page = "shift";
     render();
+  }
+
+  function adminSetActiveShift() {
+    if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
+    const shiftName = document.getElementById("repair-active-shift")?.value || getCurrentShiftName();
+    if (!shiftByName(shiftName)) return alert("Select a valid shift.");
+    const before = { activeShiftName: DB.activeShiftName, shiftStart: DB.shiftStart, shiftOpen: DB.shiftOpen };
+    DB.shiftOpen = true;
+    DB.activeShiftName = shiftName;
+    DB.shiftStart = new Date().toISOString();
+    audit("Admin Set Active Shift", shiftName, before, { activeShiftName: DB.activeShiftName, shiftStart: DB.shiftStart, shiftOpen: DB.shiftOpen });
+    saveDB();
+    pushConfig();
+    S.page = "shift";
+    render();
+  }
+
+  async function adminForceCloseShift() {
+    if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
+    const shiftName = document.getElementById("repair-close-shift")?.value || DB.activeShiftName || getCurrentShiftName();
+    const date = parseDateInput(document.getElementById("repair-date")?.value);
+    if (!shiftByName(shiftName)) return alert("Select a valid shift to force close.");
+    if (!confirm(`Force close ${shiftName} for ${isoToLabel(date)}?\n\nThis bypasses duplicate-close protection and balance matching. Use only to repair a stuck shift.`)) return;
+    await closeCurrentShift("admin force close", { shiftName, date, force: true });
   }
 
   function openModal(type) {
@@ -3568,15 +5186,21 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function editEntry(id) {
+    if (!requirePerm("Edit Entries")) return;
+    const ref = entryRef(id);
+    if (ref && !ref.current) return alert("Closed shift entries are locked. Add a correction entry instead of editing archived history.");
     S.modal = { type: "editEntry", entryId: id };
     render();
   }
 
   function saveEntryEdit() {
     if (!checkOnline()) return;
+    if (!requirePerm("Edit Entries")) return;
     const ref = entryRef(S.modal.entryId);
     const entry = ref?.entry;
     if (!entry) return;
+    if (!ref.current) return alert("Closed shift entries are locked. Add a correction entry instead of editing archived history.");
+    const before = clone(entry);
     entry.type = document.getElementById("edit-type").value;
     entry.date = parseDateInput(document.getElementById("edit-date").value);
     entry.shift = document.getElementById("edit-shift").value;
@@ -3584,6 +5208,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     entry.agent = document.getElementById("edit-agent").value;
     entry.playerName = document.getElementById("edit-player").value.trim();
     entry.playerUrl = document.getElementById("edit-link").value.trim();
+    entry.playerCode = normalizePlayerCode(document.getElementById("edit-player-code").value);
     entry.gameId = document.getElementById("edit-gameid").value.trim();
     entry.gameName = document.getElementById("edit-game").value;
     entry.deposit = num(document.getElementById("edit-deposit").value);
@@ -3593,13 +5218,21 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     entry.fpAmount = num(document.getElementById("edit-fp").value);
     entry.rdCredits = num(document.getElementById("edit-rd").value);
     entry.cashoutPaid = num(document.getElementById("edit-cashout").value);
+    if (!isWholeNumber(entry.recharge) || !isWholeNumber(entry.fpAmount) || !isWholeNumber(entry.rdCredits)) {
+      return alert("Recharge, freeplay, and redeem credits must be whole numbers.");
+    }
+    const balanceErr = validateEntryEditBalance(entry, before);
+    if (balanceErr) {
+      Object.assign(entry, before);
+      return alert(balanceErr.message);
+    }
     entry.custTag = document.getElementById("edit-cust").value.trim();
     entry.legalName = document.getElementById("edit-legal").value.trim();
-    entry.contact = document.getElementById("edit-contact").value.trim();
-    entry.email = document.getElementById("edit-email").value.trim();
     entry.dispute = !!document.getElementById("edit-dispute")?.checked;
     entry.disputeNote = document.getElementById("edit-dispute-note")?.value.trim() || "";
     entry.isNewPlayer = [entry.salesName, entry.legalName, entry.contact, entry.email].some((value) => String(value || "").trim());
+    ensurePlayerCode(entry);
+    audit("Edit Entry", `${entry.type} ${entry.id}`, before, entry);
     saveDB();
     if (ref.current) syncEntry(entry);
     else void sbPush();
@@ -3609,17 +5242,23 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function deleteEntry(id) {
     if (!checkOnline()) return;
-    if (!confirm("Delete this entry?")) return;
+    if (!requirePerm("Delete Entries")) return;
+    if (!confirmDelete("Delete this entry?")) return;
     const ref = entryRef(id);
+    if (ref && !ref.current) return alert("Closed shift entries are locked. Add a correction entry instead of deleting archived history.");
+    const before = ref?.entry ? clone(ref.entry) : null;
     if (ref?.current) DB.entries = DB.entries.filter((entry) => entry.id !== id);
     else if (ref?.shift) ref.shift.entries = (ref.shift.entries || []).filter((entry) => entry.id !== id);
+    audit("Delete Entry", id, before, null);
     saveDB();
     void sbPush();
     render();
   }
 
-  function saveShift() {
+  function saveShift(event) {
+    event?.preventDefault();
     if (!checkOnline()) return;
+    if (!requirePerm("Manage Agents")) return;
     const name = document.getElementById("shift-name").value.trim();
     const start = document.getElementById("shift-start").value;
     const end = document.getElementById("shift-end").value;
@@ -3632,22 +5271,54 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function deleteShift(id) {
     if (!checkOnline()) return;
-    if (!confirm("Delete this shift?")) return;
+    if (!requirePerm("Manage Agents")) return;
+    const isAssigned = combinedPeople().some((person) => person.shiftId === id || (person.shiftHistory || []).some((item) => item.shiftId === id));
+    const hasAttendance = DB.attendance.some((record) => record.shiftId === id);
+    if (isAssigned || hasAttendance) return alert("This shift is used by people or attendance history and cannot be deleted.");
+    if (!confirmDelete("Delete this shift?")) return;
     DB.shifts = DB.shifts.filter((shift) => shift.id !== id);
     saveDB();
     pushConfig();
     render();
   }
 
-  function saveAgent() {
+  function normalizeAgentRole(value) {
+    return String(value || "").trim().toLowerCase().replace(/[^a-z0-9 _-]/g, "").replace(/\s+/g, " ");
+  }
+
+  function addAgentRole() {
     if (!checkOnline()) return;
+    const role = normalizeAgentRole(document.getElementById("new-agent-role")?.value);
+    if (!role) return;
+    DB.agentRoles = uniqueList([...(DB.agentRoles || []), role]);
+    saveDB();
+    pushConfig();
+    render();
+  }
+
+  function deleteAgentRole(role) {
+    if (!checkOnline()) return;
+    role = normalizeAgentRole(role);
+    if (DB.agents.some((agent) => normalizeAgentRole(agent.role) === role)) return alert("This role is assigned to agents and cannot be deleted.");
+    if (!confirmDelete("Delete this role?")) return;
+    DB.agentRoles = (DB.agentRoles || []).filter((item) => normalizeAgentRole(item) !== role);
+    saveDB();
+    pushConfig();
+    render();
+  }
+
+  function saveAgent(event) {
+    event?.preventDefault();
+    if (!checkOnline()) return;
+    if (!requirePerm("Manage Agents")) return;
     const data = {
       name: document.getElementById("agent-name").value.trim(),
-      role: document.getElementById("agent-role").value.trim() || "agent",
+      role: normalizeAgentRole(document.getElementById("agent-role").value) || "agent",
       shiftId: document.getElementById("agent-shift").value,
       color: document.getElementById("agent-color").value,
       attendanceRequired: document.getElementById("agent-attendance-required").checked,
       showInDeposits: document.getElementById("agent-show-deposits").checked,
+      breakAllowedMins: num(document.getElementById("agent-break-allowed").value),
       targets: {
         newPlayers: num(document.getElementById("agent-target-players").value),
         deposit: num(document.getElementById("agent-target-deposit").value)
@@ -3655,8 +5326,18 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     };
     if (!data.name) return;
     const existing = DB.agents.find((agent) => agent.id === S.modal.agentId);
-    if (existing) Object.assign(existing, data);
-    else DB.agents.push({ id: uid("agent"), ...data });
+    if (existing) {
+      if (existing.shiftId !== data.shiftId) {
+        const effectiveDate = shiftEffectivePrompt(existing.name);
+        if (!effectiveDate) return;
+        existing.shiftHistory = existing.shiftHistory || [];
+        if (!existing.shiftHistory.length && existing.shiftId) existing.shiftHistory.push({ date: "0000-01-01", shiftId: existing.shiftId, at: new Date().toISOString() });
+        existing.shiftHistory.push({ date: effectiveDate, shiftId: data.shiftId, at: new Date().toISOString() });
+      }
+      Object.assign(existing, data);
+    } else {
+      DB.agents.push({ id: uid("agent"), ...data, shiftHistory: data.shiftId ? [{ date: todayISO(), shiftId: data.shiftId, at: new Date().toISOString() }] : [] });
+    }
     saveDB();
     pushConfig();
     closeModal();
@@ -3669,7 +5350,10 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function deleteAgent(id) {
     if (!checkOnline()) return;
-    if (!confirm("Delete this agent and related attendance records?")) return;
+    if (!requirePerm("Manage Agents")) return;
+    const hasEntries = allEntries().some((entry) => DB.agents.find((agent) => agent.id === id)?.name === entry.agent);
+    if (hasEntries) return alert("This agent has transaction history and cannot be deleted.");
+    if (!confirmDelete("Delete this agent and related attendance records?")) return;
     DB.agents = DB.agents.filter((agent) => agent.id !== id);
     DB.attendance = DB.attendance.filter((record) => record.agentId !== id);
     DB.leaveRequests = DB.leaveRequests.filter((request) => request.employeeId !== id);
@@ -3678,12 +5362,14 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     render();
   }
 
-  function saveStaff() {
+  function saveStaff(event) {
+    event?.preventDefault();
     if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
     const role = document.getElementById("staff-role").value;
     const adminAccess = role !== "agent" && !!document.getElementById("staff-admin-access")?.checked;
     const selectedPerms = [...document.querySelectorAll(".perm-check:checked")].map((input) => input.value);
-    const perms = adminAccess ? cleanPerms([...AGENT_PANEL_PERMISSIONS, "View Dashboard", ...selectedPerms]) : staffPermsForRole(role, false);
+    const perms = adminAccess ? cleanPerms(selectedPerms) : staffPermsForRole(role, false);
     const data = {
       name: document.getElementById("staff-name").value.trim(),
       email: document.getElementById("staff-email").value.trim(),
@@ -3694,6 +5380,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       color: document.getElementById("staff-color").value,
       attendanceRequired: document.getElementById("staff-attendance-required").checked,
       showInDeposits: document.getElementById("staff-show-deposits").checked,
+      breakAllowedMins: num(document.getElementById("staff-break-allowed").value),
       targets: {
         newPlayers: num(document.getElementById("staff-target-players").value),
         deposit: num(document.getElementById("staff-target-deposit").value)
@@ -3702,8 +5389,18 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     };
     if (!data.name || !data.email || (adminAccess && !data.pin)) return;
     const existing = DB.staff.find((staff) => staff.id === S.modal.staffId);
-    if (existing) Object.assign(existing, data);
-    else DB.staff.push({ id: uid("staff"), ...data });
+    if (existing) {
+      if (existing.shiftId !== data.shiftId) {
+        const effectiveDate = shiftEffectivePrompt(existing.name);
+        if (!effectiveDate) return;
+        existing.shiftHistory = existing.shiftHistory || [];
+        if (!existing.shiftHistory.length && existing.shiftId) existing.shiftHistory.push({ date: "0000-01-01", shiftId: existing.shiftId, at: new Date().toISOString() });
+        existing.shiftHistory.push({ date: effectiveDate, shiftId: data.shiftId, at: new Date().toISOString() });
+      }
+      Object.assign(existing, data);
+    } else {
+      DB.staff.push({ id: uid("staff"), ...data, shiftHistory: data.shiftId ? [{ date: todayISO(), shiftId: data.shiftId, at: new Date().toISOString() }] : [] });
+    }
     saveDB();
     pushConfig();
     closeModal();
@@ -3716,7 +5413,9 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function deleteStaff(id) {
     if (!checkOnline()) return;
-    if (!confirm("Delete this staff member?")) return;
+    const staff = DB.staff.find((item) => item.id === id);
+    if (staff && allEntries().some((entry) => entry.agent === staff.name)) return alert("This staff member has transaction history and cannot be deleted.");
+    if (!confirmDelete("Delete this staff member?")) return;
     DB.staff = DB.staff.filter((staff) => staff.id !== id);
     if (S.adminUserId === id) {
       S.adminAuthed = false;
@@ -3733,14 +5432,14 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const adminRow = document.getElementById("staff-admin-row");
     const adminPanel = document.getElementById("staff-admin-permissions");
     const pinWrap = document.getElementById("staff-pin-wrap");
-    const adminAccess = role !== "agent" && (staffDefaultAdminAccess(role) || !!adminBox?.checked);
+    const adminAccess = role !== "agent" && staffDefaultAdminAccess(role);
     if (adminRow) adminRow.style.display = role === "agent" ? "none" : "";
     if (adminBox) adminBox.checked = role !== "agent" && adminAccess;
     if (adminPanel) adminPanel.style.display = adminAccess ? "" : "none";
     if (pinWrap) pinWrap.style.display = adminAccess ? "" : "none";
     const pin = document.getElementById("staff-pin");
     if (pin) pin.required = adminAccess;
-    document.querySelectorAll(".perm-check").forEach((input) => { input.checked = staffPermsForRole(role, adminAccess).includes(input.value); });
+    document.querySelectorAll(".perm-check").forEach((input) => { input.checked = adminAccess && staffPermsForRole(role, adminAccess).includes(input.value); });
     const operational = ["manager", "supervisor", "agent"].includes(role);
     const attendance = document.getElementById("staff-attendance-required");
     const deposits = document.getElementById("staff-show-deposits");
@@ -3757,7 +5456,9 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     if (pinWrap) pinWrap.style.display = adminAccess ? "" : "none";
     const pin = document.getElementById("staff-pin");
     if (pin) pin.required = adminAccess;
-    document.querySelectorAll(".perm-check").forEach((input) => { input.checked = staffPermsForRole(role, adminAccess).includes(input.value); });
+    if (!adminAccess) {
+      document.querySelectorAll(".perm-check").forEach((input) => { input.checked = false; });
+    }
   }
 
   function staffSelectAll() {
@@ -3774,11 +5475,13 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     document.querySelectorAll(".perm-check").forEach((input) => { input.checked = staffPermsForRole(role, adminAccess).includes(input.value); });
   }
 
-  function saveNewGame() {
+  function saveNewGame(event) {
+    event?.preventDefault();
     if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
     const name = document.getElementById("game-name").value.trim();
     if (!name) return;
-    DB.games.push({
+    const game = {
       id: uid("game"),
       name,
       backendLoaded: 0,
@@ -3789,7 +5492,9 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       password: document.getElementById("game-pass").value.trim(),
       gameVendorId: document.getElementById("game-vendor").value,
       reloadHistory: []
-    });
+    };
+    DB.games.push(game);
+    audit("Add Game", game.name, null, game);
     saveDB();
     pushConfig();
     closeModal();
@@ -3807,8 +5512,10 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function saveGameEdit(id) {
     if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
     const game = DB.games.find((item) => item.id === id);
     if (!game) return;
+    const before = clone(game);
     game.name = document.getElementById("eg-name").value.trim() || game.name;
     game.gameVendorId = document.getElementById("eg-vendor").value;
     game.pricePer1k = num(document.getElementById("eg-price").value);
@@ -3816,6 +5523,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     game.playerLink = document.getElementById("eg-player").value.trim();
     game.username = document.getElementById("eg-user").value.trim();
     game.password = document.getElementById("eg-pass").value.trim();
+    audit("Edit Game", game.name, before, game);
     S.editGameId = null;
     saveDB();
     pushConfig();
@@ -3824,41 +5532,41 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function topUpGame(id) {
     if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
     const game = DB.games.find((item) => item.id === id);
     if (!game) return;
-    const amount = num(prompt("Amount being ADDED to backend"));
+    const before = clone(game);
+    const amountInput = prompt("Amount being ADDED to backend");
+    const amount = num(amountInput);
     if (!amount) return;
+    if (!isWholeNumber(amount)) return alert("Backend top-up credits must be a whole number.");
     game.backendLoaded = num(game.backendLoaded) + amount;
     game.reloadHistory = game.reloadHistory || [];
     game.reloadHistory.unshift({ date: todayISO(), amount, at: new Date().toISOString() });
+    audit("Top-up Game", game.name, before, game, `Added ${fmtPlain(amount)} credits`);
     saveDB();
     pushConfig();
-    render();
-  }
-
-  function setGameBalance(id) {
-    if (!checkOnline()) return;
-    const game = DB.games.find((item) => item.id === id);
-    if (!game) return;
-    const amount = prompt("Set exact starting balance");
-    if (amount === null || amount === "") return;
-    game.backendLoaded = num(amount);
-    saveDB();
-    pushConfig();
+    queueGameBalanceBackup("Game top-up", game.id, game.id);
     render();
   }
 
   function deleteGame(id) {
     if (!checkOnline()) return;
-    if (!confirm("Delete this game?")) return;
+    if (!requirePerm("Manage Settings")) return;
+    const game = DB.games.find((item) => item.id === id);
+    if (game && allEntries().some((entry) => entry.gameId === id || entry.gameName === game.name)) return alert("This game has transaction history and cannot be deleted.");
+    if (!confirmDelete("Delete this game?")) return;
+    audit("Delete Game", game?.name || id, game, null);
     DB.games = DB.games.filter((game) => game.id !== id);
     saveDB();
     pushConfig();
     render();
   }
 
-  function savePayMethod() {
+  function savePayMethod(event) {
+    event?.preventDefault();
     if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
     const name = document.getElementById("pay-method-name").value.trim();
     if (!name) return;
     DB.payMethods.push({ id: uid("pay"), name, tags: [] });
@@ -3893,6 +5601,46 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     return existing;
   }
 
+  function vendorHasLedger(vendor) {
+    const totals = vendorTotals(vendor);
+    return totals.deposits > 0 || (vendor.payments || []).length > 0 || (vendor.deductions || []).length > 0;
+  }
+
+  function linkedVendorTagIds(vendor) {
+    return new Set((vendor?.fees || []).map((fee) => {
+      if (fee.tagId) return fee.tagId;
+      const method = DB.payMethods.find((item) => item.id === fee.payMethodId);
+      return method?.tags.find((tag) => String(tag.tag || "").toLowerCase() === String(fee.payTag || "").toLowerCase())?.id || "";
+    }).filter(Boolean));
+  }
+
+  function otherVendorUsesTag(vendorId, tagId) {
+    return DB.payVendors.some((vendor) => vendor.id !== vendorId && (vendor.fees || []).some((fee) => {
+      if (fee.tagId === tagId) return true;
+      const method = DB.payMethods.find((item) => item.id === fee.payMethodId);
+      const tag = method?.tags.find((item) => item.id === tagId);
+      return tag && String(tag.tag || "").toLowerCase() === String(fee.payTag || "").toLowerCase();
+    }));
+  }
+
+  function setVendorTagsArchived(vendor, archived) {
+    const ids = linkedVendorTagIds(vendor);
+    DB.payMethods.forEach((method) => {
+      method.tags.forEach((tag) => {
+        if (!ids.has(tag.id) || otherVendorUsesTag(vendor.id, tag.id)) return;
+        tag.active = !archived;
+        tag.archivedAt = archived ? new Date().toISOString() : "";
+      });
+    });
+  }
+
+  function deleteVendorTags(vendor) {
+    const ids = linkedVendorTagIds(vendor);
+    DB.payMethods.forEach((method) => {
+      method.tags = method.tags.filter((tag) => !ids.has(tag.id) || otherVendorUsesTag(vendor.id, tag.id));
+    });
+  }
+
   function togglePayTag(methodId, tagId, active) {
     if (!checkOnline()) return;
     const tag = DB.payMethods.find((method) => method.id === methodId)?.tags.find((item) => item.id === tagId);
@@ -3906,6 +5654,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function deletePayTag(methodId, tagId) {
     if (!checkOnline()) return;
+    if (!confirmDelete("Delete this payment tag?")) return;
     const method = DB.payMethods.find((item) => item.id === methodId);
     if (!method) return;
     method.tags = method.tags.filter((tag) => tag.id !== tagId);
@@ -3916,7 +5665,10 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function deletePayMethod(id) {
     if (!checkOnline()) return;
-    if (!confirm("Delete this payment method?")) return;
+    if (!requirePerm("Manage Settings")) return;
+    const hasEntries = allEntries().some((entry) => entry.payMethodId === id);
+    if (hasEntries) return alert("This payment method has transaction history and cannot be deleted.");
+    if (!confirmDelete("Delete this payment method?")) return;
     DB.payMethods = DB.payMethods.filter((method) => method.id !== id);
     saveDB();
     pushConfig();
@@ -3934,8 +5686,10 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     render();
   }
 
-  function savePageName() {
+  function savePageName(event) {
+    event?.preventDefault();
     if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
     const name = document.getElementById("page-name")?.value.trim();
     if (!name) return;
     const payload = {
@@ -3958,17 +5712,68 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function deletePage(id) {
     if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
+    if (!confirmDelete("Delete this page name?")) return;
     DB.pageNames = DB.pageNames.filter((page) => page.id !== id);
     saveDB();
     pushConfig();
     render();
   }
 
-  function savePayVendor() {
+  function vendorGroupToggle(prefix) {
+    const select = document.getElementById(`${prefix}-vendor-whatsapp`);
+    const group = document.getElementById(`${prefix}-vendor-group`);
+    if (group) group.disabled = select?.value !== "yes";
+  }
+
+  function readVendorFields(prefix) {
+    const hasWhatsappGroup = document.getElementById(`${prefix}-vendor-whatsapp`)?.value === "yes";
+    return {
+      contactPerson: document.getElementById(`${prefix}-vendor-contact`)?.value.trim() || "",
+      phone: document.getElementById(`${prefix}-vendor-phone`)?.value.trim() || "",
+      email: document.getElementById(`${prefix}-vendor-email`)?.value.trim() || "",
+      hasWhatsappGroup,
+      groupName: hasWhatsappGroup ? document.getElementById(`${prefix}-vendor-group`)?.value.trim() || "" : ""
+    };
+  }
+
+  function savePayVendor(event) {
+    event?.preventDefault();
     if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
     const name = document.getElementById("pay-vendor-name").value.trim();
     if (!name) return;
-    DB.payVendors.push({ id: uid("vendor"), name, notes: "", fees: [], paid: 0, payments: [], deductions: [] });
+    const vendor = { id: uid("vendor"), name, ...readVendorFields("pay"), notes: "", fees: [], paid: 0, payments: [], deductions: [] };
+    DB.payVendors.push(vendor);
+    S.selectedPayVendorId = vendor.id;
+    saveDB();
+    pushConfig();
+    closeModal();
+  }
+
+  function selectPayVendor(id) {
+    S.selectedPayVendorId = id;
+    render();
+  }
+
+  function editPayVendor(id) {
+    S.selectedPayVendorId = id;
+    S.modal = { type: "editPayVendor", vendorId: id };
+    render();
+  }
+
+  function savePayVendorEdit(event) {
+    event?.preventDefault();
+    if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
+    const vendor = DB.payVendors.find((item) => item.id === S.modal?.vendorId);
+    if (!vendor) return;
+    const before = clone(vendor);
+    const name = document.getElementById("pay-vendor-name")?.value.trim();
+    if (!name) return;
+    Object.assign(vendor, { name, ...readVendorFields("pay") });
+    audit("Edit Payment Vendor", vendor.name, before, vendor);
+    S.selectedPayVendorId = vendor.id;
     saveDB();
     pushConfig();
     closeModal();
@@ -3984,6 +5789,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function saveVendorPayment() {
     if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
     const vendor = DB.payVendors.find((item) => item.id === S.modal?.vendorId);
     if (!vendor) return;
     const amount = num(document.getElementById("vendor-payment-amount")?.value);
@@ -3993,10 +5799,13 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const reference = document.getElementById("vendor-payment-ref")?.value.trim() || "";
     const note = document.getElementById("vendor-payment-note")?.value.trim() || "";
     vendor.payments = Array.isArray(vendor.payments) ? vendor.payments : [];
-    vendor.payments.push({ id: uid("vendor-payment"), amount, at: buildDateTime(date, time) || new Date().toISOString(), reference, note });
+    const payment = { id: uid("vendor-payment"), amount, at: buildDateTime(date, time) || new Date().toISOString(), reference, note };
+    vendor.payments.push(payment);
     syncVendorPaid(vendor);
+    audit("Record Vendor Payment", vendor.name, null, payment);
     saveDB();
     pushConfig();
+    queueSheetBatch("VendorLedger", vendorLedgerColumns(), [vendorLedgerRow(vendor, "Payment", payment)], "Vendor payment");
     S.modal = null;
     render();
   }
@@ -4008,14 +5817,17 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function editVendorPayment(vendorId, paymentId) {
     if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
     const vendor = DB.payVendors.find((item) => item.id === vendorId);
     const payment = vendor?.payments?.find((item) => item.id === paymentId);
     if (!vendor || !payment) return;
+    const before = clone(payment);
     const amount = num(prompt("Payment amount", payment.amount));
     if (amount <= 0) return;
     const at = prompt("Date and time", payment.at || new Date().toISOString()) || payment.at || new Date().toISOString();
     payment.amount = amount;
     payment.at = at;
+    audit("Edit Vendor Payment", vendor.name, before, payment);
     syncVendorPaid(vendor);
     saveDB();
     pushConfig();
@@ -4024,10 +5836,15 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function deleteVendorPayment(vendorId, paymentId) {
     if (!checkOnline()) return;
-    if (!confirm("Delete this vendor payment entry?")) return;
+    if (!requirePerm("Manage Settings")) return;
     const vendor = DB.payVendors.find((item) => item.id === vendorId);
     if (!vendor) return;
+    const hasLedgerTransactions = vendorTotals(vendor).deposits > 0 || (vendor.deductions || []).length > 0;
+    if (hasLedgerTransactions) return alert("This vendor has ledger transaction history. Payment records are locked and cannot be deleted.");
+    if (!confirmDelete("Delete this vendor payment entry?")) return;
+    const before = clone((vendor.payments || []).find((item) => item.id === paymentId));
     vendor.payments = (vendor.payments || []).filter((item) => item.id !== paymentId);
+    audit("Delete Vendor Payment", vendor.name, before, null);
     syncVendorPaid(vendor);
     saveDB();
     pushConfig();
@@ -4036,28 +5853,35 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function addVendorDeduction(id) {
     if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
     const vendor = DB.payVendors.find((item) => item.id === id);
     if (!vendor) return;
     const amount = num(prompt("Dispute or deduction amount"));
     if (amount <= 0) return;
     const note = prompt("Reason for deduction") || "";
     vendor.deductions = Array.isArray(vendor.deductions) ? vendor.deductions : [];
-    vendor.deductions.push({ id: uid("deduction"), amount, note, at: new Date().toISOString() });
+    const deduction = { id: uid("deduction"), amount, note, at: new Date().toISOString() };
+    vendor.deductions.push(deduction);
+    audit("Add Vendor Deduction", vendor.name, null, deduction);
     saveDB();
     pushConfig();
+    queueSheetBatch("VendorLedger", vendorLedgerColumns(), [vendorLedgerRow(vendor, "Deduction", deduction)], "Vendor deduction");
     render();
   }
 
   function editVendorDeduction(vendorId, deductionId) {
     if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
     const vendor = DB.payVendors.find((item) => item.id === vendorId);
     const deduction = vendor?.deductions?.find((item) => item.id === deductionId);
     if (!vendor || !deduction) return;
+    const before = clone(deduction);
     const amount = num(prompt("Dispute or deduction amount", deduction.amount));
     if (amount <= 0) return;
     deduction.amount = amount;
     deduction.note = prompt("Reason for deduction", deduction.note || "") || "";
     deduction.at = prompt("Date and time", deduction.at || new Date().toISOString()) || deduction.at || new Date().toISOString();
+    audit("Edit Vendor Deduction", vendor.name, before, deduction);
     saveDB();
     pushConfig();
     render();
@@ -4065,10 +5889,13 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function deleteVendorDeduction(vendorId, deductionId) {
     if (!checkOnline()) return;
-    if (!confirm("Delete this dispute or deduction entry?")) return;
+    if (!requirePerm("Manage Settings")) return;
+    if (!confirmDelete("Delete this dispute or deduction entry?")) return;
     const vendor = DB.payVendors.find((item) => item.id === vendorId);
     if (!vendor) return;
+    const before = clone((vendor.deductions || []).find((item) => item.id === deductionId));
     vendor.deductions = (vendor.deductions || []).filter((item) => item.id !== deductionId);
+    audit("Delete Vendor Deduction", vendor.name, before, null);
     saveDB();
     pushConfig();
     render();
@@ -4076,8 +5903,48 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function deletePayVendor(id) {
     if (!checkOnline()) return;
-    if (!confirm("Delete this payment vendor?")) return;
+    if (!requirePerm("Manage Settings")) return;
+    const vendor = DB.payVendors.find((item) => item.id === id);
+    if (!vendor) return;
+    if (vendorHasLedger(vendor)) {
+      if (!confirm(`${vendor.name} has transaction or ledger history, so it cannot be deleted.\n\nArchive it instead? This keeps history and hides its tags from new transactions.`)) return;
+      return archivePayVendor(id);
+    }
+    if (!confirmDelete("Delete this payment vendor?")) return;
+    audit("Delete Payment Vendor", vendor.name, vendor, null);
+    deleteVendorTags(vendor);
     DB.payVendors = DB.payVendors.filter((vendor) => vendor.id !== id);
+    if (S.selectedPayVendorId === id) S.selectedPayVendorId = DB.payVendors.find((item) => !item.archived)?.id || "";
+    saveDB();
+    pushConfig();
+    render();
+  }
+
+  function archivePayVendor(id) {
+    if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
+    const vendor = DB.payVendors.find((item) => item.id === id);
+    if (!vendor) return;
+    const before = clone(vendor);
+    vendor.archived = true;
+    vendor.archivedAt = new Date().toISOString();
+    setVendorTagsArchived(vendor, true);
+    audit("Archive Payment Vendor", vendor.name, before, vendor, "Vendor retained because ledger history may exist.");
+    saveDB();
+    pushConfig();
+    render();
+  }
+
+  function restorePayVendor(id) {
+    if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
+    const vendor = DB.payVendors.find((item) => item.id === id);
+    if (!vendor) return;
+    const before = clone(vendor);
+    vendor.archived = false;
+    vendor.archivedAt = "";
+    setVendorTagsArchived(vendor, false);
+    audit("Restore Payment Vendor", vendor.name, before, vendor);
     saveDB();
     pushConfig();
     render();
@@ -4085,18 +5952,22 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function addVendorFee(vendorId) {
     if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
     const vendor = DB.payVendors.find((item) => item.id === vendorId);
     if (!vendor) return;
     const methodId = document.getElementById(`vendor-method-${vendorId}`).value;
     const payTag = document.getElementById(`vendor-tag-${vendorId}`).value.trim();
     if (!payTag) return alert("Enter the payment tag for this vendor row.");
-    ensurePayMethodTag(methodId, payTag);
-    vendor.fees.push({
+    const tag = ensurePayMethodTag(methodId, payTag);
+    const fee = {
       id: uid("fee"),
       payMethodId: methodId,
+      tagId: tag?.id || "",
       fee: num(document.getElementById(`vendor-fee-${vendorId}`).value),
       payTag
-    });
+    };
+    vendor.fees.push(fee);
+    audit("Add Vendor Fee", vendor.name, null, fee);
     saveDB();
     pushConfig();
     render();
@@ -4123,9 +5994,13 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function saveVendorFeeEdit(vendorId, feeId) {
     if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
     const fee = DB.payVendors.find((vendor) => vendor.id === vendorId)?.fees.find((item) => item.id === feeId);
     if (!fee) return;
+    const vendor = DB.payVendors.find((item) => item.id === vendorId);
+    const before = clone(fee);
     fee.fee = num(document.getElementById(`edit-fee-${feeId}`)?.value);
+    audit("Edit Vendor Fee", vendor?.name || vendorId, before, fee);
     S.editVendorFeeId = "";
     saveDB();
     pushConfig();
@@ -4134,29 +6009,75 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function deleteVendorFee(vendorId, feeId) {
     if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
     const vendor = DB.payVendors.find((item) => item.id === vendorId);
     if (!vendor) return;
+    const fee = vendor.fees.find((item) => item.id === feeId);
+    if (fee && vendorFeeDeposits(fee) > 0) return alert("This vendor fee row has transaction history and cannot be deleted.");
+    if (!confirmDelete("Delete this vendor fee row?")) return;
+    audit("Delete Vendor Fee", vendor.name, fee, null);
     vendor.fees = vendor.fees.filter((fee) => fee.id !== feeId);
+    if (fee?.tagId && !otherVendorUsesTag(vendorId, fee.tagId)) {
+      DB.payMethods.forEach((method) => { method.tags = method.tags.filter((tag) => tag.id !== fee.tagId); });
+    }
     saveDB();
     pushConfig();
     render();
   }
 
-  function addGameVendor() {
+  function addGameVendor(event) {
+    event?.preventDefault();
     if (!checkOnline()) return;
-    const input = document.getElementById("new-game-vendor");
-    const name = input.value.trim();
+    if (!requirePerm("Manage Settings")) return;
+    const input = document.getElementById("game-vendor-name") || document.getElementById("new-game-vendor");
+    const name = input?.value.trim();
     if (!name) return;
-    DB.gameVendors.push({ id: uid("game-vendor"), name, notes: "" });
+    const vendor = { id: uid("game-vendor"), name, ...readVendorFields("game"), notes: "" };
+    DB.gameVendors.push(vendor);
+    audit("Add Game Vendor", vendor.name, null, vendor);
+    S.selectedGameVendorId = vendor.id;
     saveDB();
     pushConfig();
+    closeModal();
+  }
+
+  function selectGameVendor(id) {
+    S.selectedGameVendorId = id;
     render();
+  }
+
+  function editGameVendor(id) {
+    S.selectedGameVendorId = id;
+    S.modal = { type: "editGameVendor", vendorId: id };
+    render();
+  }
+
+  function saveGameVendorEdit(event) {
+    event?.preventDefault();
+    if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
+    const vendor = DB.gameVendors.find((item) => item.id === S.modal?.vendorId);
+    if (!vendor) return;
+    const before = clone(vendor);
+    const name = document.getElementById("game-vendor-name")?.value.trim();
+    if (!name) return;
+    Object.assign(vendor, { name, ...readVendorFields("game") });
+    audit("Edit Game Vendor", vendor.name, before, vendor);
+    S.selectedGameVendorId = vendor.id;
+    saveDB();
+    pushConfig();
+    closeModal();
   }
 
   function deleteGameVendor(id) {
     if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
+    const vendor = DB.gameVendors.find((item) => item.id === id);
+    if (DB.games.some((game) => game.gameVendorId === id)) return alert("This game vendor is assigned to games. Reassign those games before deleting.");
+    if (!confirmDelete("Delete this game vendor?")) return;
+    audit("Delete Game Vendor", vendor?.name || id, vendor, null);
     DB.gameVendors = DB.gameVendors.filter((vendor) => vendor.id !== id);
-    DB.games.forEach((game) => { if (game.gameVendorId === id) game.gameVendorId = ""; });
+    if (S.selectedGameVendorId === id) S.selectedGameVendorId = DB.gameVendors[0]?.id || "";
     saveDB();
     pushConfig();
     render();
@@ -4165,20 +6086,28 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function addExpense(event) {
     event?.preventDefault();
     if (!checkOnline()) return;
-    DB.expenses.unshift({
+    if (!requirePerm("Manage Settings")) return;
+    const expense = {
       id: uid("expense"),
       date: parseDateInput(document.getElementById("expense-date").value),
       category: document.getElementById("expense-category").value,
       description: document.getElementById("expense-description").value.trim(),
       amount: num(document.getElementById("expense-amount").value)
-    });
+    };
+    DB.expenses.unshift(expense);
+    audit("Add Expense", expense.category, null, expense);
     saveDB();
     pushConfig();
+    queueSheetBatch("Expenses", expenseSheetColumns(), [expenseSheetRow(expense)], "Expense");
     render();
   }
 
   function deleteExpense(id) {
     if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
+    if (!confirmDelete("Delete this expense?")) return;
+    const before = DB.expenses.find((expense) => expense.id === id);
+    audit("Delete Expense", before?.category || id, before, null);
     DB.expenses = DB.expenses.filter((expense) => expense.id !== id);
     saveDB();
     pushConfig();
@@ -4198,6 +6127,9 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function deleteExpenseCategory(id) {
     if (!checkOnline()) return;
+    const cat = DB.expCats.find((item) => item.id === id);
+    if (cat && DB.expenses.some((expense) => expense.category === cat.name)) return alert("This expense category has expenses and cannot be deleted.");
+    if (!confirmDelete("Delete this expense category?")) return;
     DB.expCats = DB.expCats.filter((cat) => cat.id !== id);
     saveDB();
     pushConfig();
@@ -4207,13 +6139,15 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function addScheduledOff(event) {
     event?.preventDefault();
     if (!checkOnline()) return;
+    if (!requirePerm("Manage Agents")) return;
     const employeeId = document.getElementById("off-person").value;
     const date = parseDateInput(document.getElementById("off-date").value);
     const reasonSel = document.getElementById("off-reason").value;
     const custom = document.getElementById("off-custom").value.trim();
     const reason = reasonSel === "Custom" ? custom || "Custom" : reasonSel;
     const person = personById(employeeId);
-    DB.scheduledOff.unshift({ id: uid("off"), employeeId, date, reason });
+    const scheduled = { id: uid("off"), employeeId, date, reason };
+    DB.scheduledOff.unshift(scheduled);
     const rec = ensureAttendance(employeeId, date);
     rec.agentName = person?.name || "";
     rec.status = "off";
@@ -4221,6 +6155,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     rec.checkInAt = "";
     rec.checkOutAt = "";
     rec.duration = 0;
+    audit("Add Scheduled Off", person?.name || employeeId, null, scheduled);
     saveDB();
     syncAttendance(rec);
     pushConfig();
@@ -4229,8 +6164,11 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function deleteScheduledOff(id) {
     if (!checkOnline()) return;
+    if (!requirePerm("Manage Agents")) return;
+    if (!confirmDelete("Delete this scheduled off record?")) return;
     const item = DB.scheduledOff.find((entry) => entry.id === id);
     DB.scheduledOff = DB.scheduledOff.filter((entry) => entry.id !== id);
+    audit("Delete Scheduled Off", item?.employeeId || id, item, null);
     if (item) {
       const rec = getAttendance(item.employeeId, item.date);
       if (rec && rec.status === "off") rec.status = "absent";
@@ -4247,8 +6185,10 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function saveAttendanceCorrection() {
     if (!checkOnline()) return;
+    if (!requirePerm("Manage Agents")) return;
     const rec = DB.attendance.find((item) => item.id === S.modal.recordId);
     if (!rec) return;
+    const before = clone(rec);
     const date = parseDateInput(document.getElementById("correct-date").value);
     const checkInTime = document.getElementById("correct-in").value;
     const checkOutTime = document.getElementById("correct-out").value;
@@ -4258,7 +6198,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     rec.checkOutAt = checkOutTime ? buildDateTime(date, checkOutTime) : "";
     rec.checkIn = rec.checkInAt;
     rec.checkOut = rec.checkOutAt;
-    rec.duration = minutesBetween(rec.checkInAt, rec.checkOutAt);
+    rec.breakMins = num(document.getElementById("correct-break")?.value);
+    rec.duration = Math.max(0, minutesBetween(rec.checkInAt, rec.checkOutAt) - rec.breakMins);
     rec.leaveReason = document.getElementById("correct-reason").value.trim();
     const person = personById(rec.agentId);
     rec.late = isLateForPerson(person, rec.checkInAt);
@@ -4267,6 +6208,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const hasReport = REPORT_FIELDS.some((fieldItem) => report[fieldItem.key] > 0);
     report.totalPlayers = getBaseTotalPlayers(rec.agentName, rec.date) + num(report.newPlayers);
     rec.report = hasReport ? report : null;
+    audit("Correct Attendance", rec.agentName || rec.agentId, before, rec);
     saveDB();
     syncAttendance(rec);
     S.modal = null;
@@ -4275,7 +6217,10 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function deleteAttendance(id) {
     if (!checkOnline()) return;
-    if (!confirm("Delete this attendance record?")) return;
+    if (!requirePerm("Manage Agents")) return;
+    if (!confirmDelete("Delete this attendance record?")) return;
+    const before = DB.attendance.find((record) => record.id === id);
+    audit("Delete Attendance", before?.agentName || id, before, null);
     DB.attendance = DB.attendance.filter((record) => record.id !== id);
     saveDB();
     void sbPush();
@@ -4310,6 +6255,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function removeAttendanceReason(key, value) {
     if (!checkOnline()) return;
+    if (!confirmDelete("Delete this attendance reason?")) return;
     DB.attendanceSettings[key] = DB.attendanceSettings[key].filter((item) => item !== value);
     saveDB();
     pushConfig();
@@ -4332,6 +6278,11 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     render();
   }
 
+  function clearPlayerCodeSearch() {
+    S.playerLookupCode = "";
+    render();
+  }
+
   function clearPerformance() {
     S.pfDate = "";
     S.pfShift = "";
@@ -4349,29 +6300,88 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     downloadTextFile(filename, rows.map((row) => row.map((value) => `"${String(value ?? "").replace(/"/g, '""')}"`).join(",")).join("\n"), "text/csv;charset=utf-8");
   }
 
+  function transactionExportColumns() {
+    return [
+      "Entry ID", "Type", "Status", "Session", "Date", "Entry Time", "Shift", "Sales Person",
+      "Player ID", "Player Name", "Legal Name", "Contact Number", "Email", "Facebook Link",
+      "Game ID", "Game Name", "Deposit", "Recharge Credits", "Promo Amount", "Promo Percentage",
+      "Freeplay Credits", "Referral Credits", "Redeem Credits", "Cashout Paid",
+      "Payment Method", "Payment Tag", "Deposit On Page", "Page Name", "Hunting Profile",
+      "New Player", "Customer Tag", "Referral For Player ID", "Referred By Player ID",
+      "Referral Type", "Referral Note", "Dispute", "Dispute Note", "Created At"
+    ];
+  }
+
+  function transactionExportRow(entry) {
+    const method = DB.payMethods.find((item) => item.id === entry.payMethodId)?.name || "";
+    return [
+      entry.id,
+      entry.type,
+      entry.dispute ? "Dispute" : "Clear",
+      entry.shiftSession || "Current",
+      isoToLabel(entry.date),
+      fmtDateTime(entry.createdAt),
+      entry.shift,
+      entry.agent,
+      normalizePlayerCode(entry.playerCode),
+      entry.playerName,
+      entry.legalName,
+      entry.contact,
+      entry.email,
+      entry.playerUrl,
+      entry.gameId,
+      entry.gameName,
+      entry.deposit,
+      entry.recharge,
+      entry.promo,
+      entry.promoP,
+      entry.type === "freeplay" ? entry.fpAmount : 0,
+      entry.type === "referral" ? entry.fpAmount || entry.referralBonusAmount : 0,
+      entry.rdCredits,
+      entry.cashoutPaid,
+      method,
+      entry.payTagLabel || entry.payTag || "",
+      entry.depositOnPage ? "Yes" : "No",
+      entry.pageName,
+      entry.huntingProfile,
+      entry.isNewPlayer ? "Yes" : "No",
+      entry.custTag,
+      normalizePlayerCode(entry.referralForCode),
+      normalizePlayerCode(entry.referredByCode),
+      entry.referrerType || "",
+      entry.referralNote || "",
+      entry.dispute ? "Yes" : "No",
+      entry.disputeNote || "",
+      entry.createdAt || ""
+    ];
+  }
+
+  function exportTransactionsExcel() {
+    if (!requirePerm("Export / Backup")) return;
+    const rows = filteredTransactions().map(transactionExportRow);
+    downloadExcelTable(`panda-squad-transactions-${todayISO()}.xls`, transactionExportColumns(), rows);
+  }
+
   function exportEntries() {
-    exportRows(`team-markhor-entries-${todayISO()}.csv`, [
-      ["Type", "Session", "Date", "Shift", "Agent", "Player Name", "Game ID", "Game Name", "Deposit", "Recharge", "Freeplay", "Redeem Credits", "Cashout Paid", "New Player"],
-      ...allEntries().map((entry) => [entry.type, entry.shiftSession || "Current", isoToLabel(entry.date), entry.shift, entry.agent, entry.playerName, entry.gameId, entry.gameName, entry.deposit, entry.recharge, entry.fpAmount, entry.rdCredits, entry.cashoutPaid, entry.isNewPlayer ? "Yes" : "No"])
-    ]);
+    exportRows(`panda-squad-entries-${todayISO()}.csv`, [transactionExportColumns(), ...allEntries().map(transactionExportRow)]);
   }
 
   function exportExpenses() {
-    exportRows(`team-markhor-expenses-${todayISO()}.csv`, [["Date", "Category", "Description", "Amount in Pakistani Rupees"], ...DB.expenses.map((expense) => [isoToLabel(expense.date), expense.category, expense.description, expense.amount])]);
+    exportRows(`panda-squad-expenses-${todayISO()}.csv`, [["Date", "Category", "Description", "Amount in Pakistani Rupees"], ...DB.expenses.map((expense) => [isoToLabel(expense.date), expense.category, expense.description, expense.amount])]);
   }
 
   function exportPerformance() {
     const rows = performanceRows();
-    exportRows(`team-markhor-agent-performance-${todayISO()}.csv`, [["Date", "Agent", "Type", "Player", "Game", "Deposit", "Recharge", "New Player"], ...rows.map((entry) => [isoToLabel(entry.date), entry.agent, entry.type, entry.playerName, entry.gameName, entry.deposit, entry.recharge, entry.isNewPlayer ? "Yes" : "No"])]);
+    exportRows(`panda-squad-agent-performance-${todayISO()}.csv`, [["Date", "Agent", "Type", "Player ID", "Player", "Game", "Deposit", "Recharge", "New Player"], ...rows.map((entry) => [isoToLabel(entry.date), entry.agent, entry.type, normalizePlayerCode(entry.playerCode), entry.playerName, entry.gameName, entry.deposit, entry.recharge, entry.isNewPlayer ? "Yes" : "No"])]);
   }
 
   function exportAttendance() {
-    exportRows(`team-markhor-attendance-${todayISO()}.csv`, [["Employee", "Date", "Status", "Check In", "Check Out", "Duration Minutes", "Leave Reason"], ...DB.attendance.map((record) => [record.agentName, isoToLabel(record.date), record.status, record.checkInAt, record.checkOutAt, record.duration, record.leaveReason || record.offReason || ""])]);
+    exportRows(`panda-squad-attendance-${todayISO()}.csv`, [["Employee", "Date", "Status", "Check In", "Check Out", "Break Minutes", "Duration Minutes", "Leave Reason"], ...DB.attendance.map((record) => [record.agentName, isoToLabel(record.date), record.status, record.checkInAt, record.checkOutAt, record.breakMins || 0, record.duration, record.leaveReason || record.offReason || ""])]);
   }
 
   function exportMonthlyAttendance() {
     const people = allPeople();
-    exportRows(`team-markhor-monthly-attendance-${S.month}.csv`, [["Date", ...people.map((person) => person.name)], ...monthDays(S.month).map((day) => [isoToLabel(day), ...people.map((person) => attendanceText(getAttendance(person.id, day), day))])]);
+    exportRows(`panda-squad-monthly-attendance-${S.month}.csv`, [["Date", ...people.map((person) => person.name)], ...monthDays(S.month).map((day) => [isoToLabel(day), ...people.map((person) => attendanceText(getAttendance(person.id, day), day))])]);
   }
 
   function attendanceText(record, day) {
@@ -4387,11 +6397,12 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const people = allPeople();
     const personId = S.attendancePerson || people[0]?.id || "";
     const records = DB.attendance.filter((record) => record.agentId === personId && String(record.date).startsWith(S.month) && record.report);
-    exportRows(`team-markhor-monthly-progress-${S.month}.csv`, [["Date", ...REPORT_FIELDS.map((fieldItem) => fieldItem.label), "Total Players"], ...records.map((record) => [isoToLabel(record.date), ...REPORT_FIELDS.map((fieldItem) => record.report?.[fieldItem.key] || 0), record.report?.totalPlayers || 0])]);
+    exportRows(`panda-squad-monthly-progress-${S.month}.csv`, [["Date", ...REPORT_FIELDS.map((fieldItem) => fieldItem.label), "Total Players"], ...records.map((record) => [isoToLabel(record.date), ...REPORT_FIELDS.map((fieldItem) => record.report?.[fieldItem.key] || 0), record.report?.totalPlayers || 0])]);
   }
 
   function exportJson() {
-    downloadTextFile(`team-markhor-backup-${todayISO()}.json`, JSON.stringify(DB, null, 2), "application/json");
+    if (!requirePerm("Export / Backup")) return;
+    downloadTextFile(`panda-squad-backup-${todayISO()}.json`, JSON.stringify(DB, null, 2), "application/json");
   }
 
   function loadRestoreFile(file) {
@@ -4407,10 +6418,13 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function restoreBackup() {
     if (!restoreFileText) return;
+    if (!requirePerm("Export / Backup")) return;
     let parsed;
     try { parsed = JSON.parse(restoreFileText); } catch { return alert("Invalid JSON backup."); }
     if (!confirm("Restore this backup and overwrite all current data?")) return;
+    const before = clone(DB);
     DB = normalizeDB(parsed);
+    audit("Restore Backup", "CRM", before, DB);
     saveDB();
     restoreFileText = "";
     void sbPush();
@@ -4434,9 +6448,12 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function saveSupabase(enabled) {
+    if (!requirePerm("Manage Settings")) return;
+    const before = clone(DB.supabase);
     DB.supabase.url = document.getElementById("sb-url").value.trim();
     DB.supabase.anonKey = document.getElementById("sb-key").value.trim();
     DB.supabase.enabled = enabled;
+    audit("Save Supabase Settings", "Supabase", before, DB.supabase);
     saveDB();
     pushConfig();
     lastSavedStatus = enabled ? "Supabase settings saved." : "Supabase disabled.";
@@ -4444,6 +6461,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   async function pushAll() {
+    if (!requirePerm("Export / Backup")) return;
+    if (!confirm("Push this PC's current CRM data to Supabase?\n\nThis will overwrite remote rows that are no longer present on this PC. Pull first if another office PC may have newer data.")) return;
     lastSavedStatus = "Pushing all data...";
     render();
     const ok = await sbPush();
@@ -4452,6 +6471,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   async function pullAll() {
+    if (!requirePerm("Export / Backup")) return;
     lastSavedStatus = "Pulling from Supabase...";
     render();
     const ok = await sbPull(false);
@@ -4520,32 +6540,49 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function redeemLookup() {
+    const code = normalizePlayerCode(S.rf.playerCode);
     const id = String(S.rf.gameId || "").trim();
-    const match = id ? allEntries().filter((entry) => entry.gameId === id).sort((a, b) => String(b.createdAt || b.date).localeCompare(String(a.createdAt || a.date)))[0] : null;
+    const match = code ? lastEntryForPlayerCode(code) : id ? allEntries().filter((entry) => entry.gameId === id).sort((a, b) => String(b.createdAt || b.date).localeCompare(String(a.createdAt || a.date)))[0] : null;
     if (match?.gameName && !S.rf.gameName) S.rf.gameName = match.gameName;
+    if (match?.gameId && !S.rf.gameId) S.rf.gameId = match.gameId;
     render();
   }
 
   async function bootApp() {
+    clearBrowserDB();
     DB = loadDB();
     applyTheme();
     S = createState();
     S.pf.agent = salesPeople()[0]?.name || "";
     S.ff.agent = salesPeople()[0]?.name || "";
     S.rf.agent = salesPeople()[0]?.name || "";
+    S.referral.agent = salesPeople()[0]?.name || "";
     S.pf.gameName = DB.games[0]?.name || "";
     S.ff.gameName = DB.games[0]?.name || "";
     S.rf.gameName = DB.games[0]?.name || "";
     bootStatus.textContent = "Connecting to Supabase...";
-    await sbPull(true);
+    const pulled = await sbPull(true);
+    if (!pulled) {
+      bootStatus.textContent = IS_ONLINE ? "Supabase data was not found or could not be loaded." : "Internet is offline. Supabase data is required.";
+      lastSavedStatus = bootStatus.textContent;
+    }
     applyTheme();
     S.pf.agent = salesPeople()[0]?.name || S.pf.agent;
     S.ff.agent = salesPeople()[0]?.name || S.ff.agent;
     S.rf.agent = salesPeople()[0]?.name || S.rf.agent;
+    S.referral.agent = salesPeople()[0]?.name || S.referral.agent;
     S.pf.gameName = DB.games[0]?.name || S.pf.gameName;
     S.ff.gameName = DB.games[0]?.name || S.ff.gameName;
     S.rf.gameName = DB.games[0]?.name || S.rf.gameName;
-    saveDB();
+    restoreAdminSession();
+    if (isAdminPortal()) {
+      S.page = "admin";
+      if (!S.adminAuthed || !currentAdminUser()) S.modal = { type: adminCandidates().length ? "adminLogin" : "adminSetup" };
+    } else if (isAgentPortal()) {
+      S.page = isShiftOpen() ? "shift" : "closed";
+      S.adminAuthed = false;
+      S.adminUserId = "";
+    }
     window.addEventListener("online", updateOnlineStatus);
     window.addEventListener("offline", updateOnlineStatus);
     document.addEventListener("input", (event) => clearFieldError(event.target));
@@ -4558,6 +6595,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     }, 30000);
     clockTimer = setInterval(updateClock, 1000);
     render();
+    void flushSheetBackup();
     app.classList.remove("hidden");
     boot.classList.add("hidden");
   }
@@ -4565,27 +6603,27 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   window.TM = {
     setPage, openAdminGate, loginAdmin, createFirstAdmin, lockAdmin,
     parseDateInput, dateLabel: isoToLabel,
-    setShiftTab, setAdmin, setS, setPF, setFF, setRF, setPaidMethod, setPaidTag,
-    updatePaidMoney, toggleDepositOnPage, validateLink, validateOptionalLink, submitPaid,
-    clearPaid, submitFreeplay, clearFreeplay, submitRedeem, clearRedeem, redeemLookup,
-    approveOverride, cancelOverride, checkIn, markLeave, openCheckout, submitCheckout,
+    setShiftTab, setAdmin, setS, setPF, setFF, setRF, setReferral, fillPaidFromCode, fillFreeplayFromCode, fillRedeemFromCode, setPaidMethod, setPaidTag,
+    updatePaidMoney, toggleDepositOnPage, toggleFreeplayDepositOnPage, validateLink, submitPaid,
+    clearPaid, submitFreeplay, clearFreeplay, submitRedeem, clearRedeem, submitReferralBonus, clearReferralBonus, redeemLookup,
+    approveOverride, cancelOverride, checkIn, toggleBreak, markLeave, openCheckout, submitCheckout,
     updateCheckoutPreview, copyCheckoutPreview, openLeaveRequest, saveLeaveRequest,
     reviewLeave, editLeaveRequest, deleteLeaveRequest, openCloseShift, closeBalanceInput,
-    confirmCloseShift, startNewShift, openModal, closeModal, backdrop, setEntryFilter,
-    editEntry, saveEntryEdit, deleteEntry, saveShift, deleteShift, saveAgent, openAgentEdit,
+    confirmCloseShift, startNewShift, adminSetActiveShift, adminForceCloseShift, openModal, closeModal, backdrop, setEntryFilter,
+    editEntry, saveEntryEdit, deleteEntry, saveShift, deleteShift, addAgentRole, deleteAgentRole, saveAgent, openAgentEdit,
     deleteAgent, saveStaff, openStaffEdit, deleteStaff, staffRoleChanged, staffAdminAccessChanged, staffSelectAll,
     staffClearAll, staffResetRole, saveNewGame, editGame, cancelGameEdit, saveGameEdit,
-    topUpGame, setGameBalance, deleteGame, savePayMethod, addPayTag, deletePayTag,
-    deletePayMethod, addPage, savePageName, editPage, deletePage, savePayVendor, recordVendorPayment, saveVendorPayment, viewVendorPaymentHistory,
-    editVendorPayment, deleteVendorPayment, addVendorDeduction, editVendorDeduction, deleteVendorDeduction, deletePayVendor, addVendorFee,
-    updPVFee, editVendorFee, cancelVendorFeeEdit, saveVendorFeeEdit, deleteVendorFee, togglePayTag, addGameVendor, deleteGameVendor, addExpense, deleteExpense,
+    topUpGame, deleteGame, savePayMethod, addPayTag, deletePayTag,
+    deletePayMethod, addPage, savePageName, editPage, deletePage, savePayVendor, selectPayVendor, editPayVendor, savePayVendorEdit, vendorGroupToggle, recordVendorPayment, saveVendorPayment, viewVendorPaymentHistory,
+    editVendorPayment, deleteVendorPayment, addVendorDeduction, editVendorDeduction, deleteVendorDeduction, deletePayVendor, archivePayVendor, restorePayVendor, addVendorFee,
+    updPVFee, editVendorFee, cancelVendorFeeEdit, saveVendorFeeEdit, deleteVendorFee, togglePayTag, addGameVendor, selectGameVendor, editGameVendor, saveGameVendorEdit, deleteGameVendor, addExpense, deleteExpense,
     addExpenseCategory, deleteExpenseCategory, addScheduledOff, deleteScheduledOff,
     correctAttendance, saveAttendanceCorrection, deleteAttendance, setAttendanceAdmin, setVendorSection, setPayMethodSection,
     addAttendanceReason, removeAttendanceReason, updateLateGrace, clearTransactions,
-    clearPlayerLookup, clearPerformance, clearAttendanceFilters, exportEntries, exportExpenses,
+    clearPlayerLookup, clearPlayerCodeSearch, clearPerformance, clearAttendanceFilters, exportTransactionsExcel, exportEntries, exportExpenses,
     exportPerformance, exportAttendance, exportMonthlyAttendance, exportMonthlyProgress,
     exportJson, loadRestoreFile, restoreBackup, testSupabase, saveSupabase, pushAll,
-    pullAll, autoSyncNow, copySql, saveOverrideCode, saveSalesTargets, saveTargets,
+    pullAll, autoSyncNow, copySql, saveGoogleSheets, testGoogleSheets, syncCurrentToGoogleSheets, saveOverrideCode, saveSalesTargets, saveTargets,
     setThemeMode, previewCustomTheme, saveTheme, resetCustomTheme,
     copy, renderNow
   };
