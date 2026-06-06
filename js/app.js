@@ -3,6 +3,7 @@
 
   const STORAGE_KEY = "gcrmv5";
   const ADMIN_SESSION_KEY = "gcrmv5-admin-session";
+  const THEME_PREF_KEY = "gcrmv5-theme-pref";
   const CONFIG_ID = "main_config";
   const SUPABASE_URL = "https://eioindyucvbkvybbevmc.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_VPBm_1F6jl7dBMHJi1jokA_UOdcW6jZ";
@@ -483,6 +484,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   let restoreFileText = "";
   let lastSavedStatus = "";
   let lastSheetStatus = "";
+  let localTheme = null;
 
   const app = document.getElementById("app");
   const boot = document.getElementById("boot");
@@ -749,6 +751,22 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     return { mode: "white", custom: clone(THEME_CUSTOM_DEFAULTS) };
   }
 
+  function loadLocalTheme() {
+    try {
+      localTheme = normalizeTheme(JSON.parse(localStorage.getItem(THEME_PREF_KEY) || "null"));
+    } catch {
+      localTheme = null;
+    }
+  }
+
+  function saveLocalTheme() {
+    try {
+      localStorage.setItem(THEME_PREF_KEY, JSON.stringify(normalizeTheme(localTheme || DB?.theme)));
+    } catch {
+      // Theme preference is per browser and optional.
+    }
+  }
+
   function normalizeTheme(theme) {
     const input = theme && typeof theme === "object" ? theme : {};
     const allowed = new Set([...Object.keys(THEME_PRESETS), "custom"]);
@@ -778,7 +796,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function currentThemeValues() {
-    const theme = normalizeTheme(DB?.theme);
+    const theme = normalizeTheme(localTheme || DB?.theme);
     if (theme.mode.startsWith("saved:")) {
       const saved = DB?.savedThemes?.find((item) => `saved:${item.id}` === theme.mode);
       if (saved?.values) return { ...THEME_CUSTOM_DEFAULTS, ...saved.values };
@@ -791,9 +809,10 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function applyTheme() {
     if (!DB) return;
     DB.theme = normalizeTheme(DB.theme);
+    localTheme = normalizeTheme(localTheme || DB.theme);
     const values = currentThemeValues();
     const root = document.documentElement;
-    root.dataset.theme = DB.theme.mode;
+    root.dataset.theme = localTheme.mode;
     root.style.colorScheme = isDarkColor(values.bg) ? "dark" : "light";
     Object.entries(THEME_VAR_MAP).forEach(([key, cssVar]) => {
       if (values[key]) root.style.setProperty(cssVar, values[key]);
@@ -812,16 +831,14 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       ["black", "Black"],
       ["mint", "Mint"],
       ["ocean", "Ocean"],
-      ["graphite", "Graphite"],
-      ["rose", "Rose"],
-      ["royal", "Royal"]
+      ["rose", "Rose"]
     ];
     const saved = (DB?.savedThemes || []).map((theme) => [`saved:${theme.id}`, theme.name]);
     return [...presets, ...saved, ["custom", "Custom"]];
   }
 
   function themeQuickSelect() {
-    const mode = normalizeTheme(DB?.theme).mode;
+    const mode = normalizeTheme(localTheme || DB?.theme).mode;
     return selectInput("theme-quick", themeOptions(), mode, "TM.setThemeMode(this.value)", `class="theme-quick" title="Theme Style"`);
   }
 
@@ -830,7 +847,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function readCustomThemeInputs() {
-    const existing = normalizeTheme(DB.theme).custom;
+    const existing = normalizeTheme(localTheme || DB.theme).custom;
     const get = (id, fallback) => document.getElementById(id)?.value || fallback;
     const custom = {
       ...existing,
@@ -874,55 +891,94 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function setThemeMode(mode) {
-    DB.theme = normalizeTheme(DB.theme);
+    localTheme = normalizeTheme(localTheme || DB.theme);
     const validModes = themeOptions().map((item) => item[0]);
-    DB.theme.mode = validModes.includes(mode) ? mode : "white";
-    saveDB();
+    localTheme.mode = validModes.includes(mode) ? mode : "white";
+    saveLocalTheme();
     applyTheme();
-    pushConfig();
     render();
   }
 
   function previewCustomTheme() {
-    DB.theme = normalizeTheme(DB.theme);
-    DB.theme.mode = "custom";
-    DB.theme.custom = readCustomThemeInputs();
+    localTheme = normalizeTheme(localTheme || DB.theme);
+    localTheme.mode = "custom";
+    localTheme.custom = readCustomThemeInputs();
+    saveLocalTheme();
     applyTheme();
     const select = document.getElementById("theme-mode");
     if (select) select.value = "custom";
   }
 
   function saveTheme() {
-    DB.theme = normalizeTheme(DB.theme);
-    const mode = document.getElementById("theme-mode")?.value || DB.theme.mode;
+    localTheme = normalizeTheme(localTheme || DB.theme);
+    const mode = document.getElementById("theme-mode")?.value || localTheme.mode;
     const validModes = themeOptions().map((item) => item[0]);
-    DB.theme.mode = validModes.includes(mode) ? mode : "white";
-    if (DB.theme.mode === "custom") {
-      DB.theme.custom = readCustomThemeInputs();
+    localTheme.mode = validModes.includes(mode) ? mode : "white";
+    let msgText = "Theme saved for this browser.";
+    if (localTheme.mode === "custom") {
+      localTheme.custom = readCustomThemeInputs();
       const name = document.getElementById("theme-name")?.value.trim();
       if (name) {
-        DB.savedThemes = Array.isArray(DB.savedThemes) ? DB.savedThemes : [];
-        const existing = DB.savedThemes.find((item) => item.name.toLowerCase() === name.toLowerCase());
-        if (existing) existing.values = clone(DB.theme.custom);
-        else DB.savedThemes.push({ id: uid("theme"), name, values: clone(DB.theme.custom) });
-        const saved = DB.savedThemes.find((item) => item.name.toLowerCase() === name.toLowerCase());
-        if (saved) DB.theme.mode = `saved:${saved.id}`;
+        if (S.page === "admin" && S.adminAuthed && currentAdminUser()) {
+          DB.savedThemes = Array.isArray(DB.savedThemes) ? DB.savedThemes : [];
+          const existing = DB.savedThemes.find((item) => item.name.toLowerCase() === name.toLowerCase());
+          if (existing) existing.values = clone(localTheme.custom);
+          else DB.savedThemes.push({ id: uid("theme"), name, values: clone(localTheme.custom), approvedAt: new Date().toISOString(), approvedBy: actorName() });
+          const saved = DB.savedThemes.find((item) => item.name.toLowerCase() === name.toLowerCase());
+          if (saved) localTheme.mode = `saved:${saved.id}`;
+          pushConfig();
+          msgText = "Theme approved and saved.";
+        } else {
+          DB.themeRequests = Array.isArray(DB.themeRequests) ? DB.themeRequests : [];
+          DB.themeRequests.unshift({ id: uid("theme-request"), name, values: clone(localTheme.custom), requestedAt: new Date().toISOString(), requestedBy: actorName(), status: "pending" });
+          pushConfig();
+          msgText = "Theme saved for this browser and sent to admin for approval.";
+        }
       }
     }
-    saveDB();
+    saveLocalTheme();
     applyTheme();
-    pushConfig();
     const msg = document.getElementById("theme-save-msg");
     if (msg) {
-      msg.textContent = "Theme saved.";
+      msg.textContent = msgText;
       setTimeout(() => { const node = document.getElementById("theme-save-msg"); if (node) node.textContent = ""; }, 2000);
     }
   }
 
   function resetCustomTheme() {
-    DB.theme = { mode: "custom", custom: clone(THEME_CUSTOM_DEFAULTS) };
-    saveDB();
+    localTheme = { mode: "custom", custom: clone(THEME_CUSTOM_DEFAULTS) };
+    saveLocalTheme();
     applyTheme();
+    render();
+  }
+
+  function approveThemeRequest(id) {
+    if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
+    const request = DB.themeRequests.find((item) => item.id === id);
+    if (!request) return;
+    const existing = DB.savedThemes.find((item) => item.name.toLowerCase() === request.name.toLowerCase());
+    if (existing) existing.values = clone(request.values);
+    else DB.savedThemes.push({ id: uid("theme"), name: request.name, values: clone(request.values), approvedAt: new Date().toISOString(), approvedBy: actorName() });
+    request.status = "approved";
+    request.approvedAt = new Date().toISOString();
+    request.approvedBy = actorName();
+    audit("Approve Theme", request.name, null, request);
+    saveDB();
+    pushConfig();
+    render();
+  }
+
+  function rejectThemeRequest(id) {
+    if (!checkOnline()) return;
+    if (!requirePerm("Manage Settings")) return;
+    const request = DB.themeRequests.find((item) => item.id === id);
+    if (!request) return;
+    request.status = "rejected";
+    request.rejectedAt = new Date().toISOString();
+    request.rejectedBy = actorName();
+    audit("Reject Theme", request.name, request, null);
+    saveDB();
     pushConfig();
     render();
   }
@@ -994,6 +1050,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       },
       salesTargets: { monthlySales: 0, monthlyNewPlayers: 0 },
       savedThemes: [],
+      themeRequests: [],
       theme: defaultTheme(),
       shiftStart: new Date().toISOString(),
       shiftOpen: true,
@@ -1019,7 +1076,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     [
       "shifts", "agents", "staff", "payMethods", "pageNames", "games", "payVendors",
       "gameVendors", "expCats", "expenses", "entries", "closedShifts", "attendance",
-      "leaveRequests", "scheduledOff", "agentRoles", "savedThemes", "auditLogs"
+      "leaveRequests", "scheduledOff", "agentRoles", "savedThemes", "themeRequests", "auditLogs"
     ].forEach((key) => {
       if (!Array.isArray(db[key])) db[key] = clone(base[key]);
     });
@@ -1044,6 +1101,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       }));
     }
     db.savedThemes = db.savedThemes.map((theme) => ({ id: theme.id || uid("theme"), name: String(theme.name || "Custom Theme").trim(), values: { ...THEME_CUSTOM_DEFAULTS, ...(theme.values || {}) } }));
+    db.themeRequests = db.themeRequests.map((request) => ({ id: request.id || uid("theme-request"), name: String(request.name || "Custom Theme").trim(), values: { ...THEME_CUSTOM_DEFAULTS, ...(request.values || {}) }, requestedAt: request.requestedAt || new Date().toISOString(), requestedBy: request.requestedBy || "", status: request.status || "pending" }));
     db.attendance = db.attendance.map((record) => ({
       ...record,
       leaveReason: cleanReason(record.leaveReason, "leaveReason"),
@@ -2309,6 +2367,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         </nav>
         <div class="top-right">
           ${themeQuickSelect()}
+          <button class="btn btn-ghost btn-sm" onclick="TM.openModal('theme')">Theme</button>
           ${S.page === "admin" && S.adminAuthed ? `<span class="shift-clock">Admin: <b>${esc(currentAdminUser()?.name || "Authorized")}</b></span><button class="btn btn-ghost btn-sm" onclick="TM.lockAdmin()">Lock Admin Dashboard</button>` : ""}
           <span class="shift-clock">${esc(k)} <b id="clk"></b></span>
           ${S.page === "shift" && isShiftOpen() ? `<button class="btn btn-warn" onclick="TM.openCloseShift()" ${IS_ONLINE ? "" : "disabled"}>Close Shift</button>` : ""}
@@ -3537,7 +3596,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         esc(vendor.contactPerson || "Not Set"),
         esc(vendor.phone || "Not Set"),
         fmtPlain(games.length),
-        games.length ? games.map((game) => esc(game.name)).join(", ") : `<span class="muted">No games assigned</span>`
+        games.length ? `<div class="pill-list">${games.map((game) => `<span class="pill game-pill"><span class="dot on"></span>${esc(game.name)}</span>`).join("")}</div>` : `<span class="muted">No games assigned</span>`
       ];
     });
     const unassignedGames = DB.games.filter((game) => !game.gameVendorId);
@@ -3752,6 +3811,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     return `<article class="vendor-detail stack">
       <div class="row between"><strong>${esc(vendor.name)} Games</strong><div class="row"><button class="btn btn-xs btn-ghost" onclick="TM.editGameVendor('${vendor.id}')">Edit Vendor</button><button class="btn btn-xs btn-danger" onclick="TM.deleteGameVendor('${vendor.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete Vendor</button></div></div>
       <div class="hint lookup-grid"><span><b>Contact Person</b>${esc(vendor.contactPerson || "Not Set")}</span><span><b>Phone</b>${esc(vendor.phone || "Not Set")}</span><span><b>Email</b>${esc(vendor.email || "Not Set")}</span><span><b>WhatsApp Group</b>${vendor.hasWhatsappGroup ? esc(vendor.groupName || "Yes") : "No"}</span></div>
+      <div class="pill-list">${games.map((game) => `<span class="pill game-pill"><span class="dot on"></span>${esc(game.name)}</span>`).join("") || `<span class="muted">No games assigned.</span>`}</div>
       ${simpleTable(["Game", "Backend Loaded", "Current Balance", "Price / 1000"], games.map((game) => [esc(game.name), fmt$(game.backendLoaded), fmt$(gameBal(game.id)), fmt$(game.pricePer1k)]))}
     </article>`;
   }
@@ -3804,34 +3864,48 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function renderAdminSettings() {
-    const theme = normalizeTheme(DB.theme);
-    const custom = currentThemeValues();
-    const savedName = theme.mode.startsWith("saved:") ? DB.savedThemes.find((item) => `saved:${item.id}` === theme.mode)?.name || "" : "";
+    const requests = (DB.themeRequests || []).filter((request) => request.status === "pending");
     return `<section class="grid c2">
-      <div class="fc full"><div class="fc-head">Theme and Appearance</div><div class="fg stack">
-        <div class="grid c3">
-          ${field("Theme Style", selectInput("theme-mode", themeOptions(), theme.mode, "TM.setThemeMode(this.value)"))}
-          ${field("Custom Theme Name", `<input id="theme-name" value="${esc(savedName)}">`)}
-          ${field("Primary Action Color", `<input type="color" value="${esc(custom.primary)}" id="theme-primary" oninput="TM.previewCustomTheme()">`)}
-          ${field("Brand Accent Color", `<input type="color" value="${esc(custom.gold)}" id="theme-gold" oninput="TM.previewCustomTheme()">`)}
-        </div>
-        <div class="theme-custom-grid">
-          ${themeColorField("Page Background", "theme-bg", custom.bg)}
-          ${themeColorField("Card Background", "theme-panel", custom.panel)}
-          ${themeColorField("Soft Background", "theme-panel-2", custom.panel2)}
-          ${themeColorField("Input Background", "theme-input", custom.input)}
-          ${themeColorField("Main Text", "theme-text", custom.text)}
-          ${themeColorField("Muted Text", "theme-muted", custom.muted)}
-          ${themeColorField("Secondary Accent", "theme-purple", custom.purple)}
-          ${themeColorField("Success Color", "theme-green", custom.green)}
-          ${themeColorField("Danger Color", "theme-red", custom.red)}
-          ${themeColorField("Border Color", "theme-line", custom.line)}
-          ${themeColorField("Logo Base Color", "theme-brand-a", custom.brandA)}
-          ${themeColorField("Logo End Color", "theme-brand-b", custom.brandB)}
-        </div>
-        <div class="row end"><button class="btn btn-ghost" onclick="TM.resetCustomTheme()">Reset Custom Theme</button><button class="btn btn-primary" onclick="TM.saveTheme()">Save Theme</button><span id="theme-save-msg" class="success-text"></span></div>
+      <div class="fc full"><div class="fc-head">Theme and Appearance</div><div class="fg stack">${renderThemeControls("Admin-approved custom themes become available to every browser.")}</div></div>
+      <div class="fc full"><div class="fc-head">Theme Approval Requests</div><div class="fg stack">
+        ${simpleTable(["Requested At", "Name", "Requested By", "Preview", "Actions"], requests.map((request) => [
+          esc(fmtDateTime(request.requestedAt)),
+          esc(request.name),
+          esc(request.requestedBy || "Agent"),
+          `<span class="theme-swatch" style="background:${esc(request.values.primary)}"></span><span class="theme-swatch" style="background:${esc(request.values.bg)}"></span><span class="theme-swatch" style="background:${esc(request.values.panel)}"></span>`,
+          `<div class="row"><button class="btn btn-xs btn-success" onclick="TM.approveThemeRequest('${request.id}')" ${IS_ONLINE ? "" : "disabled"}>Approve</button><button class="btn btn-xs btn-danger" onclick="TM.rejectThemeRequest('${request.id}')" ${IS_ONLINE ? "" : "disabled"}>Reject</button></div>`
+        ]))}
       </div></div>
     </section>`;
+  }
+
+  function renderThemeControls(note) {
+    const theme = normalizeTheme(localTheme || DB.theme);
+    const custom = currentThemeValues();
+    const savedName = theme.mode.startsWith("saved:") ? DB.savedThemes.find((item) => `saved:${item.id}` === theme.mode)?.name || "" : "";
+    return `
+      <p class="muted">${esc(note || "Theme changes are saved for this browser.")}</p>
+      <div class="grid c3">
+        ${field("Theme Style", selectInput("theme-mode", themeOptions(), theme.mode, "TM.setThemeMode(this.value)"))}
+        ${field("Custom Theme Name", `<input id="theme-name" value="${esc(savedName)}" placeholder="Name your custom theme">`)}
+        ${field("Primary Action Color", `<input type="color" value="${esc(custom.primary)}" id="theme-primary" oninput="TM.previewCustomTheme()">`)}
+        ${field("Brand Accent Color", `<input type="color" value="${esc(custom.gold)}" id="theme-gold" oninput="TM.previewCustomTheme()">`)}
+      </div>
+      <div class="theme-custom-grid">
+        ${themeColorField("Page Background", "theme-bg", custom.bg)}
+        ${themeColorField("Card Background", "theme-panel", custom.panel)}
+        ${themeColorField("Soft Background", "theme-panel-2", custom.panel2)}
+        ${themeColorField("Input Background", "theme-input", custom.input)}
+        ${themeColorField("Main Text", "theme-text", custom.text)}
+        ${themeColorField("Muted Text", "theme-muted", custom.muted)}
+        ${themeColorField("Secondary Accent", "theme-purple", custom.purple)}
+        ${themeColorField("Success Color", "theme-green", custom.green)}
+        ${themeColorField("Danger Color", "theme-red", custom.red)}
+        ${themeColorField("Border Color", "theme-line", custom.line)}
+        ${themeColorField("Logo Base Color", "theme-brand-a", custom.brandA)}
+        ${themeColorField("Logo End Color", "theme-brand-b", custom.brandB)}
+      </div>
+      <div class="row end"><button class="btn btn-ghost" onclick="TM.resetCustomTheme()">Reset Custom Theme</button><button class="btn btn-primary" onclick="TM.saveTheme()">Save Theme</button><span id="theme-save-msg" class="success-text"></span></div>`;
   }
 
   function renderAdminBackup() {
@@ -3890,11 +3964,12 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     if (type === "staff") return renderStaffModal();
     if (type === "addAgent" || type === "editAgent") return renderAgentModal();
     if (type === "addGame") return renderAddGameModal();
+    if (type === "theme") return modalWrap("Theme and Appearance", `<div class="stack">${renderThemeControls("This theme is saved only in this browser. If you name a custom theme, it will be sent to admin for approval.")}</div>`, `<button class="btn btn-ghost" onclick="TM.closeModal()">Close</button>`, true);
     return renderSimpleModal(type);
   }
 
   function modalWrap(title, body, foot, wide) {
-    return `<div class="moverlay" onclick="TM.backdrop(event)"><section class="modal ${wide ? "wide" : ""}">
+    return `<div class="moverlay" onclick="TM.backdrop(event)"><section class="modal ${wide ? "wide" : ""}" onclick="event.stopPropagation()">
       <div class="modal-head"><div><h2>${esc(title)}</h2></div><button class="btn btn-xs btn-ghost" onclick="TM.closeModal()">Close</button></div>
       <div class="modal-body">${body}</div>
       ${foot ? `<div class="modal-foot">${foot}</div>` : ""}
@@ -5175,7 +5250,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function backdrop(event) {
-    if (event.target.classList.contains("moverlay")) closeModal();
+    event?.stopPropagation();
   }
 
   function setEntryFilter(value) {
@@ -6551,6 +6626,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   async function bootApp() {
     clearBrowserDB();
     DB = loadDB();
+    loadLocalTheme();
     applyTheme();
     S = createState();
     S.pf.agent = salesPeople()[0]?.name || "";
@@ -6624,7 +6700,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     exportPerformance, exportAttendance, exportMonthlyAttendance, exportMonthlyProgress,
     exportJson, loadRestoreFile, restoreBackup, testSupabase, saveSupabase, pushAll,
     pullAll, autoSyncNow, copySql, saveGoogleSheets, testGoogleSheets, syncCurrentToGoogleSheets, saveOverrideCode, saveSalesTargets, saveTargets,
-    setThemeMode, previewCustomTheme, saveTheme, resetCustomTheme,
+    setThemeMode, previewCustomTheme, saveTheme, resetCustomTheme, approveThemeRequest, rejectThemeRequest,
     copy, renderNow
   };
 
