@@ -27,6 +27,7 @@
     dashboard: "View Dashboard",
     transactions: "View Entries",
     performance: "View Dashboard",
+    monthlySales: "View Dashboard",
     targets: "Manage Settings",
     pnl: "View Dashboard",
     attendance: "Manage Agents",
@@ -38,6 +39,7 @@
     vendors: "View Vendors",
     audit: "Manage Settings",
     supabase: "Manage Settings",
+    discord: "Manage Settings",
     settings: "Manage Settings",
     backup: "Export / Backup"
   };
@@ -484,6 +486,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   let restoreFileText = "";
   let lastSavedStatus = "";
   let lastSheetStatus = "";
+  let lastDiscordStatus = "";
   let localTheme = null;
 
   const app = document.getElementById("app");
@@ -896,7 +899,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     localTheme.mode = validModes.includes(mode) ? mode : "white";
     saveLocalTheme();
     applyTheme();
-    render();
+    if (!isUserEditing()) render();
   }
 
   function previewCustomTheme() {
@@ -1066,6 +1069,17 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         token: "",
         pending: []
       },
+      discord: {
+        enabled: false,
+        paid: { enabled: true, webhook: "" },
+        freeplay: { enabled: true, webhook: "" },
+        redeem: { enabled: true, webhook: "" },
+        cashout: { enabled: true, webhook: "" },
+        newPlayer: { enabled: true, webhook: "" },
+        attendance: { enabled: true, webhook: "" },
+        shiftClose: { enabled: true, webhook: "" },
+        referral: { enabled: true, webhook: "" }
+      },
       overrideCode: "1234"
     };
   }
@@ -1146,7 +1160,12 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     });
     db.games = db.games.map((game) => ({ reloadHistory: [], pricePer1k: 0, backendLoaded: 0, ...game }));
     db.pageNames = db.pageNames.map((page) => typeof page === "string" ? { id: uid("page"), name: page, link: "", accessTo: "" } : { link: "", accessTo: "", ...page });
-    db.payMethods = db.payMethods.map((method) => ({ tags: [], ...method, tags: (method.tags || []).map((tag) => ({ active: true, archivedAt: "", ...tag })) }));
+    db.payMethods = db.payMethods.map((method) => ({
+      notes: "",
+      tags: [],
+      ...method,
+      tags: (method.tags || []).map((tag) => ({ active: true, archivedAt: "", ...tag }))
+    }));
     db.payVendors = db.payVendors.map((vendor) => ({
       fees: [],
       contactPerson: "",
@@ -1173,6 +1192,21 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       pending: [],
       ...(db.googleSheets || {})
     };
+    const discordDefaults = {
+      enabled: false,
+      paid: { enabled: true, webhook: "" },
+      freeplay: { enabled: true, webhook: "" },
+      redeem: { enabled: true, webhook: "" },
+      cashout: { enabled: true, webhook: "" },
+      newPlayer: { enabled: true, webhook: "" },
+      attendance: { enabled: true, webhook: "" },
+      shiftClose: { enabled: true, webhook: "" },
+      referral: { enabled: true, webhook: "" }
+    };
+    db.discord = { ...discordDefaults, ...(db.discord || {}) };
+    Object.keys(discordDefaults).filter((key) => key !== "enabled").forEach((key) => {
+      db.discord[key] = { ...discordDefaults[key], ...(db.discord[key] || {}) };
+    });
     if (!Array.isArray(db.googleSheets.pending)) db.googleSheets.pending = [];
     if (String(db.googleSheets.webAppUrl || "").includes("script.google.com/macros/s/") && String(db.googleSheets.token || "").startsWith("PS-GOOGLE-BACKUP-")) {
       db.googleSheets.enabled = false;
@@ -1243,13 +1277,19 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       adminAttendanceTab: "daily",
       vendorSection: "payment",
       payMethodSection: "active",
+      payTagSection: "active",
       txPlayerLookup: "",
       playerLookupCode: "",
       selectedPayVendorId: "",
+      selectedPayMethodId: "",
       selectedGameVendorId: "",
       editVendorFeeId: "",
       month: monthKey(),
       pnlMonth: monthKey(),
+      salesMonth: monthKey(),
+      salesShift: "",
+      dashboardDate: todayISO(),
+      dashboardShift: "",
       modal: null,
       adminAuthed: false,
       adminUserId: "",
@@ -1590,6 +1630,38 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       totalDeposit: paid.reduce((sum, entry) => sum + num(entry.deposit), 0),
       newPlayers: entries.filter((entry) => entry.isNewPlayer).length
     };
+  }
+
+  function entriesForDateAndShift(date, shiftName = "") {
+    return allEntries().filter((entry) => {
+      if (date && entry.date !== date) return false;
+      if (shiftName && entry.shift !== shiftName) return false;
+      return true;
+    });
+  }
+
+  function shiftWiseDepositRows(date) {
+    const key = monthKey();
+    const dates = date
+      ? [date]
+      : uniqueList(allEntries()
+        .map((entry) => entry.date)
+        .filter((entryDate) => String(entryDate || "").startsWith(key)))
+        .sort((a, b) => String(b).localeCompare(String(a)));
+    const rows = dates.length ? dates : [todayISO()];
+    return rows.map((entryDate) => {
+      const paid = entriesForDateAndShift(entryDate).filter((entry) => entry.type === "paid");
+      const byShift = DB.shifts.map((shift) => {
+        const shiftPaid = paid.filter((entry) => entry.shift === shift.name);
+        const deposit = shiftPaid.reduce((sum, entry) => sum + num(entry.deposit), 0);
+        return { name: shift.name, count: shiftPaid.length, deposit, average: shiftPaid.length ? deposit / shiftPaid.length : 0 };
+      });
+      return {
+        date: entryDate,
+        totalDeposit: paid.reduce((sum, entry) => sum + num(entry.deposit), 0),
+        byShift
+      };
+    });
   }
 
   function normalizePlayerCode(value) {
@@ -2081,6 +2153,33 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     render();
   }
 
+  function saveDiscord(enabled) {
+    if (!requirePerm("Manage Settings")) return;
+    const before = clone(DB.discord || {});
+    const next = { ...(DB.discord || {}), enabled };
+    discordChannels().forEach(([key]) => {
+      next[key] = {
+        enabled: !!document.getElementById(`discord-${key}-enabled`)?.checked,
+        webhook: document.getElementById(`discord-${key}`)?.value.trim() || ""
+      };
+    });
+    DB.discord = next;
+    audit("Save Discord Alert Settings", "Discord", before, DB.discord);
+    saveDB();
+    pushConfig();
+    lastDiscordStatus = enabled ? "Discord alert settings saved." : "Discord alerts disabled.";
+    render();
+  }
+
+  function testDiscord(channel) {
+    if (!requirePerm("Manage Settings")) return;
+    saveDiscord(true);
+    const label = discordChannels().find(([key]) => key === channel)?.[1] || channel;
+    void sendDiscord(channel, `**Panda Squad CRM Discord Test**\nChannel: ${label}\nTime: ${fmtDateTime(new Date().toISOString())}`);
+    lastDiscordStatus = `Discord ${label} test requested. Check the Discord channel.`;
+    render();
+  }
+
   function syncCurrentToGoogleSheets() {
     if (!requirePerm("Export / Backup")) return;
     if (!DB.googleSheets?.enabled) return alert("Enable Google Sheets backup first.");
@@ -2296,11 +2395,19 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     if (IS_ONLINE) {
       void flushSync();
       void flushSheetBackup();
-      void sbPull(true).then((changed) => {
-        if (changed) render();
-      });
+      if (!isUserEditing()) {
+        void sbPull(true).then((changed) => {
+          if (changed && !isUserEditing()) render();
+        });
+      }
     }
     render();
+  }
+
+  function isUserEditing() {
+    const active = document.activeElement;
+    const tag = active?.tagName;
+    return !!S?.modal || ["INPUT", "SELECT", "TEXTAREA"].includes(tag) || !!active?.closest?.("form");
   }
 
   function field(label, html, cls) {
@@ -2461,8 +2568,9 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const deposit = paid.reduce((sum, entry) => sum + num(entry.deposit), 0);
     const recharge = paid.reduce((sum, entry) => sum + num(entry.recharge), 0);
     const newPlayers = rows.filter((entry) => entry.isNewPlayer).length;
-    const salesTarget = num(DB.salesTargets.monthlySales);
-    const playersTarget = num(DB.salesTargets.monthlyNewPlayers);
+    const teamTargets = teamTargetTotals();
+    const salesTarget = teamTargets.sales;
+    const playersTarget = teamTargets.players;
     return {
       deposit,
       recharge,
@@ -2540,6 +2648,14 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       newPlayers: rows.filter((entry) => entry.isNewPlayer).length,
       paidCount: paid.length
     };
+  }
+
+  function teamTargetTotals() {
+    return combinedPeople().reduce((totals, person) => {
+      totals.sales += num(person.targets?.deposit);
+      totals.players += num(person.targets?.newPlayers);
+      return totals;
+    }, { sales: 0, players: 0 });
   }
 
   function renderSalesTargetBanner() {
@@ -3017,6 +3133,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function renderAdminApp() {
     const sections = [
       ["dashboard", "Dashboard"],
+      ["monthlySales", "Monthly Sales"],
       ["transactions", "Transactions"],
       ["performance", "Agent Performance"],
       ["targets", "Targets"],
@@ -3027,8 +3144,10 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       ["games", "Games & Game Vendors"],
       ["pages", "Page Names"],
       ["vendors", "Payment Vendors"],
+      ["payMethods", "Payment Methods"],
       ["audit", "Audit Log"],
       ["supabase", "Supabase"],
+      ["discord", "Discord Alerts"],
       ["settings", "Theme & Appearance"],
       ["backup", "Backup & Export"]
     ].filter(([key]) => canAdminSection(key));
@@ -3046,6 +3165,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   function renderAdminSection() {
     if (!canAdminSection(S.adminSection)) return `<div class="empty">You do not have permission to open this admin section.</div>`;
     switch (S.adminSection) {
+      case "monthlySales": return renderAdminMonthlySales();
       case "transactions": return renderAdminTransactions();
       case "performance": return renderAdminPerformance();
       case "targets": return renderAdminTargets();
@@ -3056,11 +3176,12 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       case "agents": return renderAdminTeam();
       case "staff": return renderAdminStaff();
       case "games": return renderAdminGames();
-      case "payMethods": return renderAdminVendors();
+      case "payMethods": return renderAdminPayMethods();
       case "pages": return renderAdminPages();
       case "vendors": return renderAdminVendors();
       case "audit": return renderAdminAudit();
       case "supabase": return renderAdminSupabase();
+      case "discord": return renderAdminDiscord();
       case "settings": return renderAdminSettings();
       case "backup": return renderAdminBackup();
       default: return renderAdminDashboard();
@@ -3097,6 +3218,96 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         <div class="fc dashboard-compact"><div class="fc-head">Game Balances</div><div class="fg">${simpleTable(["Game", "Loaded", "Current"], DB.games.map((game) => [esc(game.name), fmt$(game.backendLoaded), `<span class="${gameBal(game.id) >= 0 ? "success-text" : "danger-text"}">${fmt$(gameBal(game.id))}</span>`]))}</div></div>
         <div class="fc dashboard-compact"><div class="fc-head">Vendor Amount to Receive</div><div class="fg">${renderVendorNetTable()}</div></div>
       </section>
+      ${renderDashboardShiftStats()}
+    </div>`;
+  }
+
+  function renderDashboardShiftStats() {
+    const date = S.dashboardDate || "";
+    const shiftName = S.dashboardShift || "";
+    const rows = shiftWiseDepositRows(date);
+    const filtered = allEntries().filter((entry) => {
+      if (date ? entry.date !== date : !String(entry.date || "").startsWith(monthKey())) return false;
+      if (shiftName && entry.shift !== shiftName) return false;
+      return true;
+    });
+    const stats = kpisForEntries(filtered);
+    const shiftHeaders = DB.shifts.map((shift) => esc(shift.name));
+    const avgHeaders = DB.shifts.map((shift) => `${esc(shift.name)} Avg`);
+    return `<section class="fc"><div class="fc-head">Shift Wise Stats</div><div class="fg stack">
+      <div class="grid c4">
+        ${field("Date", dateInput("dashboard-date", date, "TM.setS('dashboardDate', this.value)"))}
+        ${field("Shift Filter", selectInput("dashboard-shift", [["", "All Shifts"], ...DB.shifts.map((shift) => [shift.name, shift.name])], shiftName, "TM.setS('dashboardShift', this.value)"))}
+        <div class="row" style="align-items:end"><button class="btn btn-sm btn-ghost" onclick="TM.setS('dashboardDate','')">Current Month</button></div>
+      </div>
+      <div class="grid c4 admin-kpi-grid">
+        <article class="kpi-card"><span>Filtered Deposit</span><strong>${fmt$(stats.totalDeposit)}</strong><small>${date ? isoToLabel(date) : "Current month"}${shiftName ? ` - ${esc(shiftName)}` : ""}</small></article>
+        <article class="kpi-card"><span>Paid Transactions</span><strong>${stats.paidCount}</strong><small>Selected filter</small></article>
+        <article class="kpi-card"><span>Freeplay</span><strong>${fmt$(stats.totalFP)}</strong><small>Selected filter</small></article>
+        <article class="kpi-card"><span>Cashout</span><strong>${fmt$(stats.totalCashout)}</strong><small>Selected filter</small></article>
+      </div>
+      <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Total Deposit</th>${shiftHeaders.map((name) => `<th>${name}</th>`).join("")}${avgHeaders.map((name) => `<th>${name}</th>`).join("")}</tr></thead><tbody>
+        ${rows.map((row) => `<tr><td>${esc(isoToLabel(row.date))}</td><td>${fmt$(row.totalDeposit)}</td>${row.byShift.map((shift) => `<td>${fmt$(shift.deposit)}</td>`).join("")}${row.byShift.map((shift) => `<td>${fmt$(shift.average)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${2 + DB.shifts.length * 2}" class="empty">No shift stats found.</td></tr>`}
+      </tbody></table></div>
+    </div></section>`;
+  }
+
+  function monthlySalesAgentRows(month, shiftName = "") {
+    const rows = allEntries().filter((entry) => {
+      if (entry.type !== "paid") return false;
+      if (!String(entry.date || "").startsWith(month || monthKey())) return false;
+      if (shiftName && entry.shift !== shiftName) return false;
+      return true;
+    });
+    return salesPeople().map((person) => {
+      const mine = rows.filter((entry) => entry.agent === person.name);
+      const byShift = DB.shifts.map((shift) => {
+        const paid = mine.filter((entry) => entry.shift === shift.name);
+        const deposit = paid.reduce((sum, entry) => sum + num(entry.deposit), 0);
+        return { name: shift.name, count: paid.length, deposit, average: paid.length ? deposit / paid.length : 0 };
+      });
+      const deposit = mine.reduce((sum, entry) => sum + num(entry.deposit), 0);
+      return {
+        agent: person.name,
+        role: person.role || "agent",
+        paidCount: mine.length,
+        deposit,
+        average: mine.length ? deposit / mine.length : 0,
+        newPlayers: mine.filter((entry) => entry.isNewPlayer).length,
+        byShift
+      };
+    }).sort((a, b) => b.deposit - a.deposit);
+  }
+
+  function renderAdminMonthlySales() {
+    const month = S.salesMonth || monthKey();
+    const shiftName = S.salesShift || "";
+    const rows = monthlySalesAgentRows(month, shiftName);
+    const totalDeposit = rows.reduce((sum, row) => sum + row.deposit, 0);
+    const totalPaid = rows.reduce((sum, row) => sum + row.paidCount, 0);
+    const totalPlayers = rows.reduce((sum, row) => sum + row.newPlayers, 0);
+    const activeAgents = rows.filter((row) => row.paidCount > 0).length;
+    const shiftDepositHeaders = DB.shifts.map((shift) => `<th>${esc(shift.name)} Sales</th>`).join("");
+    const shiftAverageHeaders = DB.shifts.map((shift) => `<th>${esc(shift.name)} Avg</th>`).join("");
+    return `<div class="stack">
+      <section class="fc"><div class="fc-head">Monthly Sales</div><div class="fg stack">
+        <div class="grid c4">
+          ${field("Month", `<input id="sales-month" type="month" value="${esc(month)}" onchange="TM.setS('salesMonth', this.value)">`)}
+          ${field("Shift", selectInput("sales-shift", [["", "All Shifts"], ...DB.shifts.map((shift) => [shift.name, shift.name])], shiftName, "TM.setS('salesShift', this.value)"))}
+          <div class="row end"><button class="btn btn-primary" onclick="TM.renderNow()">Apply</button><button class="btn btn-ghost" onclick="TM.setS('salesMonth','${monthKey()}', false); TM.setS('salesShift','')">Reset</button></div>
+        </div>
+        <div class="grid c4 admin-kpi-grid">
+          <article class="kpi-card"><span>Monthly Deposit</span><strong>${fmt$(totalDeposit)}</strong><small>${totalPaid} paid transactions</small></article>
+          <article class="kpi-card"><span>Average Sale</span><strong>${fmt$(totalPaid ? totalDeposit / totalPaid : 0)}</strong><small>Deposit per paid transaction</small></article>
+          <article class="kpi-card"><span>New Players</span><strong>${fmtPlain(totalPlayers)}</strong><small>${esc(month)}${shiftName ? ` - ${esc(shiftName)}` : ""}</small></article>
+          <article class="kpi-card"><span>Active Agents</span><strong>${fmtPlain(activeAgents)}</strong><small>With paid sales</small></article>
+        </div>
+      </div></section>
+      <section class="fc"><div class="fc-head">Agent Wise Monthly Sales</div><div class="fg">
+        <div class="tbl-wrap"><table><thead><tr><th>Agent</th><th>Role</th><th>Paid Transactions</th><th>Total Deposit</th><th>Average Sale</th><th>New Players</th>${shiftDepositHeaders}${shiftAverageHeaders}</tr></thead><tbody>
+          ${rows.map((row) => `<tr><td>${esc(row.agent)}</td><td>${roleBadge(row.role)}</td><td>${fmtPlain(row.paidCount)}</td><td><div class="progress-bar"><i style="width:${totalDeposit ? Math.round((row.deposit / totalDeposit) * 100) : 0}%"></i></div>${fmt$(row.deposit)}</td><td>${fmt$(row.average)}</td><td>${fmtPlain(row.newPlayers)}</td>${row.byShift.map((shift) => `<td>${fmt$(shift.deposit)}</td>`).join("")}${row.byShift.map((shift) => `<td>${fmt$(shift.average)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${6 + DB.shifts.length * 2}" class="empty">No monthly sales found.</td></tr>`}
+        </tbody></table></div>
+      </div></section>
     </div>`;
   }
 
@@ -3150,11 +3361,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
           <article class="kpi-card"><span>Monthly New Player Target</span><strong>${s.playersTarget ? fmtPlain(s.playersTarget) : "Not Set"}</strong><small>Achieved ${fmtPlain(s.newPlayers)}${s.playersTarget ? ` (${s.playersPct}%)` : ""}</small><div class="progress-bar"><i style="width:${s.playersPct}%"></i></div></article>
           <article class="kpi-card"><span>New Player Target Remaining</span><strong>${fmtPlain(Math.max(s.playersTarget - s.newPlayers, 0))}</strong><small>Current month</small></article>
         </div>
-        <div class="grid c2">
-          ${field("Monthly Team Sales Target", `<input id="target-sales" type="number" step="0.01" min="0" value="${esc(DB.salesTargets.monthlySales)}">`)}
-          ${field("Monthly New Player Target", `<input id="target-players" type="number" step="1" min="0" value="${esc(DB.salesTargets.monthlyNewPlayers)}">`)}
-        </div>
-        <div class="row"><button class="btn btn-primary" onclick="TM.saveTargets()" ${IS_ONLINE ? "" : "disabled"}>Save Targets</button><span id="sales-target-save-msg" class="success-text"></span></div>
+        <p class="muted">Team targets are calculated from the individual monthly targets below.</p>
+        <div class="row"><button class="btn btn-primary" onclick="TM.saveTargets()" ${IS_ONLINE ? "" : "disabled"}>Save Individual Targets</button><span id="sales-target-save-msg" class="success-text"></span></div>
       </div></div>
       <div class="fc"><div class="fc-head">Individual Monthly Targets</div><div class="fg stack">
         <div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Source</th><th>Role</th><th>Sales Target</th><th>Sales Achieved</th><th>Sales Remaining</th><th>New Player Target</th><th>New Players Achieved</th><th>New Players Remaining</th></tr></thead><tbody>
@@ -3632,19 +3840,28 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
   }
 
   function renderAdminPayMethods() {
-    const archived = S.payMethodSection === "archived";
+    const archived = S.payTagSection === "archived";
+    const selected = DB.payMethods.find((method) => method.id === S.selectedPayMethodId) || DB.payMethods[0];
+    const tags = selected ? selected.tags.filter((tag) => archived ? tag.active === false : tag.active !== false) : [];
     return `<section class="stack">
-      <div class="subtabs"><button class="tab ${!archived ? "active" : ""}" onclick="TM.setPayMethodSection('active')">Active Tags</button><button class="tab ${archived ? "active" : ""}" onclick="TM.setPayMethodSection('archived')">Archived Tags</button></div>
-      <div class="grid c3">${DB.payMethods.map((method) => {
-        const tags = method.tags.filter((tag) => archived ? tag.active === false : tag.active !== false);
-        return `<article class="fc"><div class="fc-head">${esc(method.name)}</div><div class="fg stack">
-        <p class="muted">Payment tags are created from Payment Vendors when you add a vendor fee row.</p>
-        <div class="pill-list">${tags.map((tag) => `<span class="pill ${tag.active === false ? "archived" : ""}">${esc(tag.tag)} ${tag.active === false ? `<span class="badge bd-gray">Archived</span><button class="btn btn-xs btn-success" onclick="TM.togglePayTag('${method.id}','${tag.id}',true)" ${IS_ONLINE ? "" : "disabled"}>Restore</button>` : `<button class="btn btn-xs btn-warn" onclick="TM.togglePayTag('${method.id}','${tag.id}',false)" ${IS_ONLINE ? "" : "disabled"}>Archive</button>`}</span>`).join("") || `<span class="muted">No ${archived ? "archived" : "active"} tags.</span>`}</div>
-        <button class="btn btn-danger btn-sm" onclick="TM.deletePayMethod('${method.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete Payment Method</button>
-      </div></article>`;
-      }).join("")}
-      <article class="fc"><div class="fc-head">Add Payment Method</div><div class="fg stack"><p class="muted">Create the method here, then add tags from Payment Vendors.</p><button class="btn btn-primary" onclick="TM.openModal('payMethod')" ${IS_ONLINE ? "" : "disabled"}>Add Payment Method</button></div></article>
+      <div class="fc"><div class="fc-head">Payment Methods</div><div class="fg stack">
+        <p class="muted">Manage internal payment methods and tags for transaction selection and vendor fee matching.</p>
+      <div class="row between"><div class="subtabs"><button class="tab ${!archived ? "active" : ""}" onclick="TM.setPayTagSection('active')">Active Tags</button><button class="tab ${archived ? "active" : ""}" onclick="TM.setPayTagSection('archived')">Archived Tags</button></div><button class="btn btn-primary" onclick="TM.openModal('payMethod')" ${IS_ONLINE ? "" : "disabled"}>Add Payment Method</button></div>
+      <div class="grid c3">
+        ${field("Select Payment Method", selectInput("pay-method-select", DB.payMethods.map((method) => [method.id, method.name]), selected?.id || "", "TM.selectPayMethod(this.value)"))}
+        <article class="kpi-card"><span>Total Methods</span><strong>${DB.payMethods.length}</strong><small>Select one to manage</small></article>
+        ${selected ? `<article class="kpi-card"><span>Selected Tags</span><strong>${(selected.tags || []).length}</strong><small>${esc(selected.name)}</small></article>` : `<article class="kpi-card"><span>Selected Tags</span><strong>0</strong><small>No method selected</small></article>`}
       </div>
+      ${selected ? `<article class="vendor-detail stack">
+        <div class="row between"><strong>${esc(selected.name)} Tags</strong><button class="btn btn-xs btn-danger" onclick="TM.deletePayMethod('${selected.id}')" ${IS_ONLINE ? "" : "disabled"}>Delete Method</button></div>
+        <p class="muted">For public agent payment details, use your Google Sheet. CRM payment methods here are only for transaction selection and vendor fee matching.</p>
+        <div class="pill-list">${tags.map((tag) => `<span class="pill ${tag.active === false ? "archived" : ""}">${esc(tag.tag)} ${tag.active === false ? `<span class="badge bd-gray">Archived</span><button class="btn btn-xs btn-success" onclick="TM.togglePayTag('${selected.id}','${tag.id}',true)" ${IS_ONLINE ? "" : "disabled"}>Restore</button>` : `<button class="btn btn-xs btn-warn" onclick="TM.togglePayTag('${selected.id}','${tag.id}',false)" ${IS_ONLINE ? "" : "disabled"}>Archive</button>`}</span>`).join("") || `<span class="muted">No ${archived ? "archived" : "active"} tags.</span>`}</div>
+        <div class="row">
+          <input id="tag-${selected.id}" placeholder="Payment tag">
+          <button class="btn btn-primary" onclick="TM.addPayTag('${selected.id}')" ${IS_ONLINE ? "" : "disabled"}>Add Tag</button>
+        </div>
+      </article>` : `<div class="empty">No payment methods yet.</div>`}
+      </div></div>
     </section>`;
   }
 
@@ -3759,27 +3976,17 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const archived = S.payMethodSection === "archived";
     const visibleVendors = DB.payVendors.filter((vendor) => archived ? vendor.archived : !vendor.archived);
     const selectedPayVendor = visibleVendors.find((vendor) => vendor.id === S.selectedPayVendorId) || visibleVendors[0];
-    const paymentRows = visibleVendors.map((vendor) => {
-      const totals = vendorTotals(vendor);
-      const active = selectedPayVendor?.id === vendor.id;
-      return [
-        `<button class="link-btn ${active ? "active-link" : ""}" onclick="TM.selectPayVendor('${vendor.id}')">${esc(vendor.name)}</button>`,
-        vendor.archived ? `<span class="badge bd-gray">Archived</span>` : `<span class="badge bd-green">Active</span>`,
-        esc(vendor.contactPerson || "Not Set"),
-        esc(vendor.phone || "Not Set"),
-        fmtPlain((vendor.fees || []).length),
-        fmt$(totals.deposits),
-        `<strong class="${totals.pending >= 0 ? "success-text" : "danger-text"}">${fmt$(totals.pending)}</strong>`
-      ];
-    });
     const paymentSection = `<div class="stack">
       ${renderVendorPaymentsDashboard()}
       <div class="fc"><div class="fc-head">Payment Vendors</div><div class="fg stack">
         <div class="row between"><div class="subtabs"><button class="tab ${!archived ? "active" : ""}" onclick="TM.setPayMethodSection('active')">Active Vendors</button><button class="tab ${archived ? "active" : ""}" onclick="TM.setPayMethodSection('archived')">Archived Vendors</button></div><button class="btn btn-primary" onclick="TM.openModal('payVendor')" ${IS_ONLINE ? "" : "disabled"}>Add Payment Vendor</button></div>
-        ${simpleTable(["Vendor", "Status", "Contact Person", "Phone", "Fee Rows", "Deposits", "Pending"], paymentRows)}
+        <div class="grid c3">
+          ${field("Select Vendor", selectInput("pay-vendor-select", visibleVendors.map((vendor) => [vendor.id, `${vendor.name}${vendor.archived ? " (Archived)" : ""}`]), selectedPayVendor?.id || "", "TM.selectPayVendor(this.value)"))}
+          <article class="kpi-card"><span>${archived ? "Archived Vendors" : "Active Vendors"}</span><strong>${visibleVendors.length}</strong><small>Select one to manage</small></article>
+          ${selectedPayVendor ? `<article class="kpi-card"><span>Selected Pending</span><strong>${fmt$(vendorTotals(selectedPayVendor).pending)}</strong><small>${esc(selectedPayVendor.name)}</small></article>` : `<article class="kpi-card"><span>Selected Pending</span><strong>$0.00</strong><small>No vendor selected</small></article>`}
+        </div>
         ${selectedPayVendor ? renderPaymentVendorDetail(selectedPayVendor) : `<div class="empty">No payment vendors yet.</div>`}
       </div></div>
-      ${renderAdminPayMethods()}
     </div>`;
     return `<section class="stack">${paymentSection}</section>`;
   }
@@ -3861,6 +4068,145 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       </div></div>
       <div class="fc full"><div class="fc-head">SQL Setup Script</div><div class="fg stack"><pre class="report-preview">${esc(SQL_SCRIPT)}</pre><button class="btn btn-ghost" onclick="TM.copySql()">Copy SQL</button></div></div>
     </section>`;
+  }
+
+  function discordChannels() {
+    return [
+      ["paid", "Paid Recharge"],
+      ["freeplay", "Freeplay"],
+      ["redeem", "Redeem"],
+      ["cashout", "Cashout"],
+      ["newPlayer", "New Players"],
+      ["attendance", "Attendance"],
+      ["shiftClose", "Closing Shift"],
+      ["referral", "Referral Bonus"]
+    ];
+  }
+
+  function validDiscordWebhook(url) {
+    return /^https:\/\/(discord\.com|discordapp\.com)\/api\/webhooks\/\d+\/[\w-]+/i.test(String(url || "").trim());
+  }
+
+  async function sendDiscord(channel, content) {
+    const cfg = DB.discord || {};
+    const target = cfg[channel] || {};
+    const webhook = String(target.webhook || "").trim();
+    if (!cfg.enabled || target.enabled === false || !webhook) return false;
+    if (!validDiscordWebhook(webhook)) {
+      lastDiscordStatus = `Discord ${channel} webhook is not valid.`;
+      return false;
+    }
+    const payload = { username: "Panda Squad CRM", content: String(content || "").slice(0, 1900) };
+    const form = new FormData();
+    form.append("payload_json", JSON.stringify(payload));
+    try {
+      await fetch(webhook, { method: "POST", mode: "no-cors", body: form });
+      lastDiscordStatus = `Discord ${channel} alert requested at ${new Date().toLocaleTimeString()}.`;
+      return true;
+    } catch {
+      lastDiscordStatus = `Discord ${channel} alert failed. Check internet or webhook URL.`;
+      return false;
+    }
+  }
+
+  function entryDiscordLines(entry, title) {
+    const lines = [
+      `**${title}**`,
+      `Date: ${isoToLabel(entry.date)} | Shift: ${entry.shift || ""}`,
+      `Agent: ${entry.agent || ""}`,
+      `Player ID: ${normalizePlayerCode(entry.playerCode) || ""}`,
+      `Player: ${entry.playerName || ""}`,
+      `Game: ${entry.gameName || ""} | Game ID: ${entry.gameId || ""}`
+    ];
+    if (entry.type === "paid") lines.push(`Deposit: ${fmt$(entry.deposit)} | Coins Given: ${fmtPlain(entry.recharge)}`, `Promo: ${fmt$(entry.promo || 0)} (${fmtPlain(entry.promoP || 0)}%)`);
+    if (entry.type === "freeplay") lines.push(`Freeplay Coins: ${fmtPlain(entry.fpAmount)}`, `Channel: ${entry.depositOnPage ? "Deposit on Page" : "Hunting Profile"}`, `Page/Profile: ${entry.depositOnPage ? entry.pageName || "" : entry.huntingProfile || ""}`);
+    if (entry.type === "redeem") lines.push(`Redeem Credits: ${fmtPlain(entry.rdCredits)}`, `Cashout Paid: ${fmt$(entry.cashoutPaid)}`);
+    if (entry.type === "referral") lines.push(`Referral Bonus Coins: ${fmtPlain(entry.fpAmount)}`, `Referred Player ID: ${normalizePlayerCode(entry.referralForCode) || ""}`, `Referrer: ${entry.playerName || entry.contact || ""}`);
+    lines.push(`Entry Time: ${fmtDateTime(entry.createdAt || new Date().toISOString())}`);
+    return lines;
+  }
+
+  function newPlayerDiscordLines(entry) {
+    return [
+      "**New Player**",
+      `Player ID: ${normalizePlayerCode(entry.playerCode) || ""}`,
+      `Player: ${entry.playerName || ""}`,
+      `Legal Name: ${entry.legalName || ""}`,
+      `Contact: ${entry.contact || ""}`,
+      `Email: ${entry.email || ""}`,
+      `Facebook: ${entry.playerUrl || ""}`,
+      `Game: ${entry.gameName || ""} | Game ID: ${entry.gameId || ""}`,
+      `Agent: ${entry.agent || ""}`,
+      `Source Entry: ${entry.type === "paid" ? "Paid Recharge" : entry.type === "freeplay" ? "Freeplay" : entry.type}`
+    ];
+  }
+
+  function notifyDiscordEntry(entry) {
+    if (!DB.discord?.enabled) return;
+    if (entry.type === "paid") void sendDiscord("paid", entryDiscordLines(entry, "Paid Recharge").join("\n"));
+    if (entry.type === "freeplay") void sendDiscord("freeplay", entryDiscordLines(entry, "Freeplay").join("\n"));
+    if (entry.type === "redeem") {
+      void sendDiscord("redeem", entryDiscordLines(entry, "Redeem").join("\n"));
+      if (num(entry.cashoutPaid) > 0) void sendDiscord("cashout", entryDiscordLines(entry, "Cashout").join("\n"));
+    }
+    if (entry.type === "referral") void sendDiscord("referral", entryDiscordLines(entry, "Referral Bonus").join("\n"));
+    if (entry.isNewPlayer) void sendDiscord("newPlayer", newPlayerDiscordLines(entry).join("\n"));
+  }
+
+  function notifyDiscordAttendance(record, action) {
+    if (!DB.discord?.enabled) return;
+    const lines = [
+      `**Attendance - ${action}**`,
+      `Employee: ${record.agentName || ""}`,
+      `Date: ${isoToLabel(record.date)}`,
+      `Shift: ${record.shiftName || ""}`,
+      `Status: ${record.status || ""}`,
+      record.checkInAt ? `Clock In: ${fmtTime(record.checkInAt)}` : "",
+      record.checkOutAt ? `Clock Out: ${fmtTime(record.checkOutAt)}` : "",
+      `Break Minutes: ${fmtPlain(record.breakMins || 0)}`,
+      record.leaveReason || record.offReason ? `Reason: ${record.leaveReason || record.offReason}` : ""
+    ].filter(Boolean);
+    void sendDiscord("attendance", lines.join("\n"));
+  }
+
+  function notifyDiscordShiftClose(closed) {
+    if (!DB.discord?.enabled || !closed) return;
+    const s = { ...kpisForEntries(closed.entries || []), ...(closed.summary || {}) };
+    const lines = [
+      "**Closing Shift**",
+      `Shift: ${s.shiftName || ""}`,
+      `Date: ${isoToLabel(closed.date)}`,
+      `Closed At: ${fmtDateTime(closed.closedAt || closed.createdAt)}`,
+      `Total Deposit: ${fmt$(s.totalDeposit || 0)}`,
+      `Paid Transactions: ${fmtPlain(s.paidCount || 0)}`,
+      `Coins Given: ${fmtPlain((s.totalR || 0) + (s.totalFP || 0))}`,
+      `Freeplay: ${fmtPlain(s.totalFP || 0)}`,
+      `Cashout: ${fmt$(s.totalCashout || 0)}`,
+      `New Players: ${fmtPlain(s.newPlayers || 0)}`,
+      `Duration: ${formatDuration(s.durationMins || 0)}`
+    ];
+    void sendDiscord("shiftClose", lines.join("\n"));
+  }
+
+  function renderAdminDiscord() {
+    const dc = DB.discord || {};
+    const rows = discordChannels().map(([key, label]) => {
+      const cfg = dc[key] || {};
+      return `<tr>
+        <td>${esc(label)}</td>
+        <td>${yesNoBadge(cfg.enabled !== false)}</td>
+        <td><input id="discord-${key}" class="mono" value="${esc(cfg.webhook || "")}" placeholder="https://discord.com/api/webhooks/..."></td>
+        <td><label class="pill"><input id="discord-${key}-enabled" type="checkbox" ${cfg.enabled !== false ? "checked" : ""}> Enabled</label></td>
+        <td><button class="btn btn-xs btn-ghost" onclick="TM.testDiscord('${key}')" ${IS_ONLINE && dc.enabled ? "" : "disabled"}>Test</button></td>
+      </tr>`;
+    }).join("");
+    return `<section class="fc"><div class="fc-head">Discord Alerts</div><div class="fg stack">
+      <p><span class="online-pill"><i class="dot ${dc.enabled && IS_ONLINE ? "on" : ""}"></i>${dc.enabled ? "Discord alerts enabled" : "Discord alerts disabled"}</span></p>
+      <div class="notice warn">Webhook URLs work like passwords. Keep this section admin-only and use private Discord channels.</div>
+      <div class="tbl-wrap"><table><thead><tr><th>Event</th><th>Status</th><th>Webhook URL</th><th>Send</th><th>Test</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="row"><button class="btn btn-success" onclick="TM.saveDiscord(true)" ${IS_ONLINE ? "" : "disabled"}>Save & Enable</button><button class="btn btn-danger" onclick="TM.saveDiscord(false)">Disable</button></div>
+      <p class="muted">${esc(lastDiscordStatus || "No Discord alert status yet.")}</p>
+    </div></section>`;
   }
 
   function renderAdminSettings() {
@@ -3957,6 +4303,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     if (type === "vendorPaymentHistory") return renderVendorPaymentHistoryModal();
     if (type === "override") return renderOverrideModal();
     if (type === "closeShift") return renderCloseShiftModal();
+    if (type === "closedShiftSummary") return renderClosedShiftSummaryModal();
     if (type === "checkout") return renderCheckoutModal();
     if (type === "leaveRequest") return renderLeaveRequestModal();
     if (type === "editEntry") return renderEditEntryModal();
@@ -4019,6 +4366,37 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
       </div>`;
     }).join("")}</div>`;
     return modalWrap(`Close ${shiftName} ${closeType}`, body, `<button class="btn btn-ghost" onclick="TM.closeModal()">Cancel</button><button class="btn btn-warn" onclick="TM.confirmCloseShift()" ${IS_ONLINE ? "" : "disabled"}>Confirm & Close ${esc(shiftName)}</button>`);
+  }
+
+  function renderClosedShiftSummaryModal() {
+    const closed = DB.closedShifts.find((shift) => shift.id === S.modal.closedId) || DB.closedShifts[0];
+    if (!closed) return modalWrap("Shift Closed", `<p class="muted">Shift was closed.</p>`, `<button class="btn btn-primary" onclick="TM.closeModal()">Done</button>`);
+    const summary = { ...kpisForEntries(closed.entries || []), ...(closed.summary || {}) };
+    const day = summary.daySummary || {};
+    const closedAt = closed.closedAt || closed.createdAt || "";
+    const duration = summary.durationMins ? formatDuration(summary.durationMins) : "";
+    const entryRows = [
+      ["Paid Recharge", summary.paidCount || 0, fmt$(summary.totalDeposit || 0), fmt$(summary.totalR || 0)],
+      ["Freeplay", summary.fpCount || 0, "", fmt$(summary.totalFP || 0)],
+      ["Redeem / Cashout", summary.rdCount || 0, fmt$(summary.totalCashout || 0), ""]
+    ];
+    const body = `<div class="stack">
+      <div class="notice success"><strong>${esc(summary.shiftName || closed.label || "Shift")} closed successfully.</strong><br><span>${esc(isoToLabel(closed.date))}${closedAt ? ` - ${esc(fmtDateTime(closedAt))}` : ""}${duration ? ` - Duration ${esc(duration)}` : ""}</span></div>
+      <div class="grid c4 admin-kpi-grid">
+        <article class="kpi-card"><span>Total Deposit</span><strong>${fmt$(summary.totalDeposit || 0)}</strong><small>${summary.paidCount || 0} paid transactions</small></article>
+        <article class="kpi-card"><span>Coins Given</span><strong>${fmt$((summary.totalR || 0) + (summary.totalFP || 0))}</strong><small>Paid recharge + freeplay</small></article>
+        <article class="kpi-card"><span>Cashout</span><strong>${fmt$(summary.totalCashout || 0)}</strong><small>Redeem payments</small></article>
+        <article class="kpi-card"><span>New Players</span><strong>${fmtPlain(summary.newPlayers || 0)}</strong><small>This shift</small></article>
+      </div>
+      ${day.totalDeposit !== undefined ? `<div class="grid c3">
+        <article class="kpi-card"><span>Day Deposit</span><strong>${fmt$(day.totalDeposit || 0)}</strong><small>${day.closedShiftCount || 1} closed shift${(day.closedShiftCount || 1) === 1 ? "" : "s"}</small></article>
+        <article class="kpi-card"><span>Day Freeplay</span><strong>${fmt$(day.totalFP || 0)}</strong><small>Closed shifts on date</small></article>
+        <article class="kpi-card"><span>Day Cashout</span><strong>${fmt$(day.totalCashout || 0)}</strong><small>Closed shifts on date</small></article>
+      </div>` : ""}
+      ${simpleTable(["Type", "Count", "Deposit / Cashout", "Credits / Coins"], entryRows.map((row) => row.map((cell) => String(cell))))}
+    </div>`;
+    const adminButton = isAgentPortal() ? "" : `<button class="btn btn-primary" onclick="TM.closeModal(); TM.setPage('admin')">Open Admin Dashboard</button>`;
+    return modalWrap("Shift Closed Summary", body, `<button class="btn btn-ghost" onclick="TM.closeModal()">Close</button>${adminButton}`, true);
   }
 
   function renderCheckoutModal() {
@@ -4324,7 +4702,6 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function setAdmin(section) {
     if (section === "shifts" || section === "agents") section = "team";
-    if (section === "payMethods") section = "vendors";
     if (!canAdminSection(section)) section = "dashboard";
     S.adminSection = section;
     render();
@@ -4662,6 +5039,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     DB.entries.unshift(entry);
     saveDB();
     syncEntry(entry);
+    notifyDiscordEntry(entry);
     render();
     return true;
   }
@@ -4882,6 +5260,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     record.late = isLateForPerson(person, record.checkInAt);
     saveDB();
     syncAttendance(record);
+    notifyDiscordAttendance(record, record.late ? "Clock In Late" : "Clock In");
     render();
   }
 
@@ -4899,16 +5278,20 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const dateKey = attendanceDateForPerson(person);
     const record = ensureAttendance(personId, dateKey);
     if (!record.checkInAt || record.checkOutAt) return;
+    let breakAction = "";
     if (record.breakStartAt) {
       record.breakMins = Math.min(num(person?.breakAllowedMins ?? 30), currentBreakMinutes(record));
       record.breakStartAt = "";
+      breakAction = "Break End";
     } else {
       if (breakTimeLeft(person, record) <= 0) return alert("No break time left for this shift.");
       if (!confirm(`Start break for ${person?.name || "this employee"}?`)) return;
       record.breakStartAt = new Date().toISOString();
+      breakAction = "Break Start";
     }
     saveDB();
     syncAttendance(record);
+    notifyDiscordAttendance(record, breakAction);
     render();
   }
 
@@ -4927,6 +5310,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     record.duration = 0;
     saveDB();
     syncAttendance(record);
+    notifyDiscordAttendance(record, "Leave");
     render();
   }
 
@@ -5014,6 +5398,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     record.report = report;
     saveDB();
     syncAttendance(record);
+    notifyDiscordAttendance(record, "Clock Out");
     S.modal = null;
     render();
   }
@@ -5193,7 +5578,8 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     await sbPush();
     queueSheetBatch("ClosedShifts", closedShiftColumns(), [closedShiftRow(closed)], "Close shift");
     queueGameBalanceBackup("Close shift", closed.id);
-    S.modal = null;
+    notifyDiscordShiftClose(closed);
+    S.modal = { type: "closedShiftSummary", closedId: closed.id };
     S.page = "shift";
     render();
     return true;
@@ -5644,7 +6030,9 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     if (!requirePerm("Manage Settings")) return;
     const name = document.getElementById("pay-method-name").value.trim();
     if (!name) return;
-    DB.payMethods.push({ id: uid("pay"), name, tags: [] });
+    const method = { id: uid("pay"), name, tags: [] };
+    DB.payMethods.push(method);
+    S.selectedPayMethodId = method.id;
     saveDB();
     pushConfig();
     closeModal();
@@ -5655,7 +6043,7 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     const input = document.getElementById(`tag-${methodId}`);
     const method = DB.payMethods.find((item) => item.id === methodId);
     if (!method || !input.value.trim()) return;
-    method.tags.push({ id: uid("tag"), tag: input.value.trim() });
+    method.tags.push({ id: uid("tag"), tag: input.value.trim(), active: true, archivedAt: "" });
     saveDB();
     pushConfig();
     render();
@@ -5828,6 +6216,11 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function selectPayVendor(id) {
     S.selectedPayVendorId = id;
+    render();
+  }
+
+  function selectPayMethod(id) {
+    S.selectedPayMethodId = id;
     render();
   }
 
@@ -6317,6 +6710,11 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     render();
   }
 
+  function setPayTagSection(section) {
+    S.payTagSection = section;
+    render();
+  }
+
   function addAttendanceReason(key, inputId) {
     if (!checkOnline()) return;
     const input = document.getElementById(inputId);
@@ -6585,8 +6983,6 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
 
   function saveTargets() {
     if (!checkOnline()) return;
-    DB.salesTargets.monthlySales = num(document.getElementById("target-sales")?.value);
-    DB.salesTargets.monthlyNewPlayers = num(document.getElementById("target-players")?.value);
     combinedPeople().forEach((person) => {
       const collection = person.source === "agent" ? DB.agents : DB.staff;
       const record = collection.find((item) => item.id === person.id);
@@ -6597,6 +6993,9 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
         newPlayers: num(document.getElementById(`target-${person.source}-${person.id}-players`)?.value)
       };
     });
+    const teamTargets = teamTargetTotals();
+    DB.salesTargets.monthlySales = teamTargets.sales;
+    DB.salesTargets.monthlyNewPlayers = teamTargets.players;
     saveDB();
     pushConfig();
     const msg = document.getElementById("sales-target-save-msg");
@@ -6664,10 +7063,10 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     document.addEventListener("input", (event) => clearFieldError(event.target));
     document.addEventListener("change", (event) => clearFieldError(event.target));
     autoPullTimer = setInterval(async () => {
-      if (!IS_ONLINE || syncBusy || syncQueue.length) return;
+      if (!IS_ONLINE || syncBusy || syncQueue.length || isUserEditing()) return;
       const before = JSON.stringify(DB);
       const ok = await sbPull(true);
-      if (ok && JSON.stringify(DB) !== before) render();
+      if (ok && JSON.stringify(DB) !== before && !isUserEditing()) render();
     }, 30000);
     clockTimer = setInterval(updateClock, 1000);
     render();
@@ -6690,16 +7089,16 @@ create policy "Allow all" on attendance for all using (true) with check (true);`
     deleteAgent, saveStaff, openStaffEdit, deleteStaff, staffRoleChanged, staffAdminAccessChanged, staffSelectAll,
     staffClearAll, staffResetRole, saveNewGame, editGame, cancelGameEdit, saveGameEdit,
     topUpGame, deleteGame, savePayMethod, addPayTag, deletePayTag,
-    deletePayMethod, addPage, savePageName, editPage, deletePage, savePayVendor, selectPayVendor, editPayVendor, savePayVendorEdit, vendorGroupToggle, recordVendorPayment, saveVendorPayment, viewVendorPaymentHistory,
+    deletePayMethod, addPage, savePageName, editPage, deletePage, savePayVendor, selectPayVendor, selectPayMethod, editPayVendor, savePayVendorEdit, vendorGroupToggle, recordVendorPayment, saveVendorPayment, viewVendorPaymentHistory,
     editVendorPayment, deleteVendorPayment, addVendorDeduction, editVendorDeduction, deleteVendorDeduction, deletePayVendor, archivePayVendor, restorePayVendor, addVendorFee,
     updPVFee, editVendorFee, cancelVendorFeeEdit, saveVendorFeeEdit, deleteVendorFee, togglePayTag, addGameVendor, selectGameVendor, editGameVendor, saveGameVendorEdit, deleteGameVendor, addExpense, deleteExpense,
     addExpenseCategory, deleteExpenseCategory, addScheduledOff, deleteScheduledOff,
-    correctAttendance, saveAttendanceCorrection, deleteAttendance, setAttendanceAdmin, setVendorSection, setPayMethodSection,
+    correctAttendance, saveAttendanceCorrection, deleteAttendance, setAttendanceAdmin, setVendorSection, setPayMethodSection, setPayTagSection,
     addAttendanceReason, removeAttendanceReason, updateLateGrace, clearTransactions,
     clearPlayerLookup, clearPlayerCodeSearch, clearPerformance, clearAttendanceFilters, exportTransactionsExcel, exportEntries, exportExpenses,
     exportPerformance, exportAttendance, exportMonthlyAttendance, exportMonthlyProgress,
     exportJson, loadRestoreFile, restoreBackup, testSupabase, saveSupabase, pushAll,
-    pullAll, autoSyncNow, copySql, saveGoogleSheets, testGoogleSheets, syncCurrentToGoogleSheets, saveOverrideCode, saveSalesTargets, saveTargets,
+    pullAll, autoSyncNow, copySql, saveGoogleSheets, testGoogleSheets, syncCurrentToGoogleSheets, saveDiscord, testDiscord, saveOverrideCode, saveSalesTargets, saveTargets,
     setThemeMode, previewCustomTheme, saveTheme, resetCustomTheme, approveThemeRequest, rejectThemeRequest,
     copy, renderNow
   };
